@@ -45,3 +45,6 @@ xam-editor
 
 # Cache
 *.cache
+
+# compile_commands.json
+compile_commands.json
