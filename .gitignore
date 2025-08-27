@@ -40,8 +40,8 @@
 # debug information files
 *.dwo
 
-# Binary
-xam-editor
+# Binaries
+bin/
 
 # Cache
 *.cache
