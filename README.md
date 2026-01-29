@@ -6,9 +6,7 @@ A modern, lightweight text and code editor built with C++17 and GTK 3. Xenon com
 
 Core Editing
 - Syntax highlighting for 100+ languages via GtkSourceView 3.0
-- Code completion with context-aware suggestions
 - Search and replace with regular expression support
-- Code formatting and linting integration
 - Undo and redo operations
 
 User Interface
@@ -16,14 +14,9 @@ User Interface
 - Split pane editing (horizontal and vertical)
 - File explorer sidebar with directory tree
 - Quick file opening with fuzzy search (Ctrl+P)
-- Settings manager with JSON configuration
 - Light and dark themes
 
 Advanced Features
-- Built-in terminal emulator
-- Git integration (status, commit, branch, diff)
-- Plugin system for extensibility
-- Auto-save and crash recovery
 - Cross-platform support (Linux, Windows, macOS)
 
 ## Requirements
@@ -66,36 +59,6 @@ The executable will be created at `build/bin/xenon`.
 ```bash
 ./build/bin/xenon
 ```
-
-## Architecture
-
-Xenon follows a layered architecture with clear separation of concerns:
-
-- Core Layer: Framework-agnostic data structures and business logic
-- Features Layer: Search, formatting, linting, code completion
-- Services Layer: Settings management, Git integration, plugins
-- UI Layer: GTK-based user interface
-
-## Project Structure
-
-```
-src/
-├── core/              # Data structures and core logic
-├── features/          # Search, formatting, linting
-├── services/          # Settings, Git, plugins
-└── ui/               # GTK user interface
-```
-
-## Code Standards
-
-This project follows strict production-grade code standards:
-
-- Modular design with single responsibility per module
-- No global mutable state
-- Comprehensive error handling
-- Security by default
-- Minimal external dependencies
-- Extensive testing of core features
 
 ## License
 
