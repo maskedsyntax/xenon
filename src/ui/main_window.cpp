@@ -85,16 +85,47 @@ void MainWindow::setupMenuBar() {
     auto editMenuitem = Gtk::manage(new Gtk::MenuItem("_Edit", true));
     editMenuitem->set_submenu(*editMenu);
 
+    // View menu
+    auto viewMenu = Gtk::manage(new Gtk::Menu());
+
+    auto splitHorizontalItem = Gtk::manage(new Gtk::MenuItem("Split _Horizontally", true));
+    splitHorizontalItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onSplitHorizontal));
+    viewMenu->append(*splitHorizontalItem);
+
+    auto splitVerticalItem = Gtk::manage(new Gtk::MenuItem("Split _Vertically", true));
+    splitVerticalItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onSplitVertical));
+    viewMenu->append(*splitVerticalItem);
+
+    auto viewMenuitem = Gtk::manage(new Gtk::MenuItem("_View", true));
+    viewMenuitem->set_submenu(*viewMenu);
+
     menubar_.append(*fileMenuitem);
     menubar_.append(*editMenuitem);
+    menubar_.append(*viewMenuitem);
     menubar_.show_all();
 }
 
 void MainWindow::createNewTab() {
-    auto editor = std::make_unique<EditorWidget>();
-    int pageNum = notebook_.append_page(*editor, "Untitled");
+    auto split_pane = std::make_unique<SplitPaneContainer>();
+    int pageNum = notebook_.append_page(*split_pane, "Untitled");
     notebook_.set_current_page(pageNum);
-    editors_.push_back(std::move(editor));
+    split_panes_.push_back(std::move(split_pane));
+}
+
+SplitPaneContainer* MainWindow::getCurrentSplitPane() {
+    int pageNum = notebook_.get_current_page();
+    if (pageNum >= 0 && pageNum < static_cast<int>(split_panes_.size())) {
+        return split_panes_[pageNum].get();
+    }
+    return nullptr;
+}
+
+EditorWidget* MainWindow::getActiveEditor() {
+    auto split_pane = getCurrentSplitPane();
+    if (split_pane) {
+        return split_pane->getActiveEditor();
+    }
+    return nullptr;
 }
 
 void MainWindow::onFileNew() {
@@ -114,13 +145,13 @@ void MainWindow::onFileOpen() {
             std::string content = xenon::core::FileManager::readFile(filename);
             createNewTab();
 
-            EditorWidget* editor = dynamic_cast<EditorWidget*>(
-                notebook_.get_nth_page(notebook_.get_current_page())
-            );
-
+            EditorWidget* editor = getActiveEditor();
             if (editor) {
                 editor->setContent(content);
-                notebook_.set_tab_label_text(*editor,
+                editor->setFilePath(filename);
+                int pageNum = notebook_.get_current_page();
+                notebook_.set_tab_label_text(
+                    *notebook_.get_nth_page(pageNum),
                     xenon::core::FileManager::getFileName(filename));
             }
         } catch (const std::exception& e) {
@@ -132,10 +163,7 @@ void MainWindow::onFileOpen() {
 }
 
 void MainWindow::onFileSave() {
-    EditorWidget* editor = dynamic_cast<EditorWidget*>(
-        notebook_.get_nth_page(notebook_.get_current_page())
-    );
-
+    EditorWidget* editor = getActiveEditor();
     if (editor) {
         editor->saveFile();
     }
@@ -173,14 +201,21 @@ bool MainWindow::on_key_press_event(GdkEventKey* event) {
         }
     }
 
+    if ((event->state & GDK_CONTROL_MASK) && (event->state & GDK_SHIFT_MASK)) {
+        if (event->keyval == GDK_KEY_minus) {
+            onSplitHorizontal();
+            return true;
+        } else if (event->keyval == GDK_KEY_backslash) {
+            onSplitVertical();
+            return true;
+        }
+    }
+
     return Gtk::ApplicationWindow::on_key_press_event(event);
 }
 
 void MainWindow::onFileSaveAs() {
-    EditorWidget* editor = dynamic_cast<EditorWidget*>(
-        notebook_.get_nth_page(notebook_.get_current_page())
-    );
-
+    EditorWidget* editor = getActiveEditor();
     if (!editor) {
         return;
     }
@@ -195,7 +230,10 @@ void MainWindow::onFileSaveAs() {
         std::string filename = dialog.get_filename();
         editor->setFilePath(filename);
         editor->saveFile();
-        notebook_.set_tab_label_text(*editor, xenon::core::FileManager::getFileName(filename));
+        int pageNum = notebook_.get_current_page();
+        notebook_.set_tab_label_text(
+            *notebook_.get_nth_page(pageNum),
+            xenon::core::FileManager::getFileName(filename));
     }
 }
 
@@ -219,14 +257,13 @@ void MainWindow::onQuickOpen() {
                 std::string content = xenon::core::FileManager::readFile(filepath);
                 createNewTab();
 
-                EditorWidget* editor = dynamic_cast<EditorWidget*>(
-                    notebook_.get_nth_page(notebook_.get_current_page())
-                );
-
+                EditorWidget* editor = getActiveEditor();
                 if (editor) {
                     editor->setContent(content);
                     editor->setFilePath(filepath);
-                    notebook_.set_tab_label_text(*editor,
+                    int pageNum = notebook_.get_current_page();
+                    notebook_.set_tab_label_text(
+                        *notebook_.get_nth_page(pageNum),
                         xenon::core::FileManager::getFileName(filepath));
                 }
             } catch (const std::exception& e) {
@@ -239,5 +276,18 @@ void MainWindow::onQuickOpen() {
     quick_open_dialog_->hide();
 }
 
+void MainWindow::onSplitHorizontal() {
+    auto split_pane = getCurrentSplitPane();
+    if (split_pane) {
+        split_pane->splitHorizontal();
+    }
+}
+
+void MainWindow::onSplitVertical() {
+    auto split_pane = getCurrentSplitPane();
+    if (split_pane) {
+        split_pane->splitVertical();
+    }
+}
 
 } // namespace xenon::ui
