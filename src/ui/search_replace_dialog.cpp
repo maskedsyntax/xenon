@@ -43,6 +43,11 @@ SearchReplaceDialog::SearchReplaceDialog(Gtk::Window& parent)
     contentArea->show_all();
 
     replace_box_.hide();
+
+    next_button_.signal_clicked().connect([this]() { signal_find_next_.emit(); });
+    prev_button_.signal_clicked().connect([this]() { signal_find_previous_.emit(); });
+    replace_button_.signal_clicked().connect([this]() { signal_replace_.emit(); });
+    replace_all_button_.signal_clicked().connect([this]() { signal_replace_all_.emit(); });
 }
 
 std::string SearchReplaceDialog::getSearchText() const {
@@ -78,5 +83,10 @@ void SearchReplaceDialog::showSearchReplace() {
     set_title("Find and Replace");
     search_entry_.grab_focus();
 }
+
+sigc::signal<void> SearchReplaceDialog::signal_find_next() { return signal_find_next_; }
+sigc::signal<void> SearchReplaceDialog::signal_find_previous() { return signal_find_previous_; }
+sigc::signal<void> SearchReplaceDialog::signal_replace() { return signal_replace_; }
+sigc::signal<void> SearchReplaceDialog::signal_replace_all() { return signal_replace_all_; }
 
 } // namespace xenon::ui

@@ -7,10 +7,10 @@ add_executable(xenon main.cpp)
 
 target_link_libraries(xenon
     PRIVATE
-        xenon_core
-        xenon_features
-        xenon_services
         xenon_ui
+        xenon_services
+        xenon_features
+        xenon_core
         ${GTK_LIBRARIES}
         ${GTKMM_LIBRARIES}
 )

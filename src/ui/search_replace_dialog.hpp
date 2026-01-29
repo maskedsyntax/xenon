@@ -20,6 +20,11 @@ public:
     void showSearch();
     void showSearchReplace();
 
+    sigc::signal<void> signal_find_next();
+    sigc::signal<void> signal_find_previous();
+    sigc::signal<void> signal_replace();
+    sigc::signal<void> signal_replace_all();
+
 private:
     Gtk::Box main_box_{Gtk::ORIENTATION_VERTICAL, 6};
     Gtk::Box search_box_{Gtk::ORIENTATION_HORIZONTAL, 6};
@@ -36,6 +41,11 @@ private:
     Gtk::Button replace_all_button_;
 
     bool replace_visible_ = false;
+
+    sigc::signal<void> signal_find_next_;
+    sigc::signal<void> signal_find_previous_;
+    sigc::signal<void> signal_replace_;
+    sigc::signal<void> signal_replace_all_;
 
     void toggleReplace();
 };
