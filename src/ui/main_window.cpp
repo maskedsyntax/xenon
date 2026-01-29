@@ -26,6 +26,10 @@ void MainWindow::setupUI() {
     main_box_.set_margin_start(0);
     main_box_.set_margin_end(0);
 
+    // Create accel group for keyboard shortcuts
+    accel_group_ = Gtk::AccelGroup::create();
+    add_accel_group(accel_group_);
+
     main_box_.pack_start(menubar_, false, false);
 
     // Setup search dialog
@@ -45,68 +49,85 @@ void MainWindow::setupUI() {
 void MainWindow::setupMenuBar() {
     // File menu
     auto fileMenu = Gtk::manage(new Gtk::Menu());
+    fileMenu->set_accel_group(accel_group_);
 
-    auto newItem = Gtk::manage(new Gtk::MenuItem("_New", true));
+    auto newItem = Gtk::manage(new Gtk::MenuItem("_New"));
     newItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onFileNew));
+    newItem->add_accelerator("activate", accel_group_, GDK_KEY_n, Gdk::CONTROL_MASK, Gtk::ACCEL_VISIBLE);
     fileMenu->append(*newItem);
 
-    auto openItem = Gtk::manage(new Gtk::MenuItem("_Open File", true));
+    auto openItem = Gtk::manage(new Gtk::MenuItem("_Open File"));
     openItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onFileOpen));
+    openItem->add_accelerator("activate", accel_group_, GDK_KEY_o, Gdk::CONTROL_MASK, Gtk::ACCEL_VISIBLE);
     fileMenu->append(*openItem);
 
-    auto openFolderItem = Gtk::manage(new Gtk::MenuItem("Open _Folder", true));
+    auto openFolderItem = Gtk::manage(new Gtk::MenuItem("Open _Folder"));
     openFolderItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onOpenFolder));
     fileMenu->append(*openFolderItem);
 
-    auto saveItem = Gtk::manage(new Gtk::MenuItem("_Save", true));
+    auto saveItem = Gtk::manage(new Gtk::MenuItem("_Save"));
     saveItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onFileSave));
+    saveItem->add_accelerator("activate", accel_group_, GDK_KEY_s, Gdk::CONTROL_MASK, Gtk::ACCEL_VISIBLE);
     fileMenu->append(*saveItem);
 
-    auto saveAsItem = Gtk::manage(new Gtk::MenuItem("Save _As", true));
+    auto saveAsItem = Gtk::manage(new Gtk::MenuItem("Save _As"));
     saveAsItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onFileSaveAs));
     fileMenu->append(*saveAsItem);
 
     fileMenu->append(*Gtk::manage(new Gtk::SeparatorMenuItem()));
 
-    auto quitItem = Gtk::manage(new Gtk::MenuItem("_Quit", true));
+    auto quitItem = Gtk::manage(new Gtk::MenuItem("_Quit"));
     quitItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onFileQuit));
     fileMenu->append(*quitItem);
 
-    auto fileMenuitem = Gtk::manage(new Gtk::MenuItem("_File", true));
+    auto fileMenuitem = Gtk::manage(new Gtk::MenuItem("_File"));
     fileMenuitem->set_submenu(*fileMenu);
 
     // Edit menu
     auto editMenu = Gtk::manage(new Gtk::Menu());
+    editMenu->set_accel_group(accel_group_);
 
-    auto findItem = Gtk::manage(new Gtk::MenuItem("_Find", true));
+    auto quickOpenItem = Gtk::manage(new Gtk::MenuItem("Quick _Open"));
+    quickOpenItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onQuickOpen));
+    quickOpenItem->add_accelerator("activate", accel_group_, GDK_KEY_p, Gdk::CONTROL_MASK, Gtk::ACCEL_VISIBLE);
+    editMenu->append(*quickOpenItem);
+
+    editMenu->append(*Gtk::manage(new Gtk::SeparatorMenuItem()));
+
+    auto findItem = Gtk::manage(new Gtk::MenuItem("_Find"));
     findItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onEditFind));
+    findItem->add_accelerator("activate", accel_group_, GDK_KEY_f, Gdk::CONTROL_MASK, Gtk::ACCEL_VISIBLE);
     editMenu->append(*findItem);
 
-    auto findReplaceItem = Gtk::manage(new Gtk::MenuItem("Find and _Replace", true));
+    auto findReplaceItem = Gtk::manage(new Gtk::MenuItem("Find and _Replace"));
     findReplaceItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onEditFindReplace));
+    findReplaceItem->add_accelerator("activate", accel_group_, GDK_KEY_h, Gdk::CONTROL_MASK, Gtk::ACCEL_VISIBLE);
     editMenu->append(*findReplaceItem);
 
-    auto editMenuitem = Gtk::manage(new Gtk::MenuItem("_Edit", true));
+    auto editMenuitem = Gtk::manage(new Gtk::MenuItem("_Edit"));
     editMenuitem->set_submenu(*editMenu);
 
     // View menu
     auto viewMenu = Gtk::manage(new Gtk::Menu());
+    viewMenu->set_accel_group(accel_group_);
 
-    auto splitHorizontalItem = Gtk::manage(new Gtk::MenuItem("Split _Horizontally (Ctrl+Alt+H)", true));
+    auto splitHorizontalItem = Gtk::manage(new Gtk::MenuItem("Split _Horizontally"));
     splitHorizontalItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onSplitHorizontal));
+    splitHorizontalItem->add_accelerator("activate", accel_group_, GDK_KEY_h, Gdk::MOD1_MASK, Gtk::ACCEL_VISIBLE);
     viewMenu->append(*splitHorizontalItem);
 
-    auto splitVerticalItem = Gtk::manage(new Gtk::MenuItem("Split _Vertically (Alt+V)", true));
+    auto splitVerticalItem = Gtk::manage(new Gtk::MenuItem("Split _Vertically"));
     splitVerticalItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onSplitVertical));
+    splitVerticalItem->add_accelerator("activate", accel_group_, GDK_KEY_v, Gdk::MOD1_MASK, Gtk::ACCEL_VISIBLE);
     viewMenu->append(*splitVerticalItem);
 
     viewMenu->append(*Gtk::manage(new Gtk::SeparatorMenuItem()));
 
-    auto selectLangItem = Gtk::manage(new Gtk::MenuItem("Set _Language", true));
+    auto selectLangItem = Gtk::manage(new Gtk::MenuItem("Set _Language"));
     selectLangItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onSelectLanguage));
     viewMenu->append(*selectLangItem);
 
-    auto viewMenuitem = Gtk::manage(new Gtk::MenuItem("_View", true));
+    auto viewMenuitem = Gtk::manage(new Gtk::MenuItem("_View"));
     viewMenuitem->set_submenu(*viewMenu);
 
     menubar_.append(*fileMenuitem);
@@ -200,42 +221,6 @@ void MainWindow::onFileQuit() {
 bool MainWindow::on_delete_event(GdkEventAny* /* any_event */) {
     app_->quit();
     return true;
-}
-
-bool MainWindow::on_key_press_event(GdkEventKey* event) {
-    if (event->state & GDK_CONTROL_MASK) {
-        if (event->keyval == GDK_KEY_s) {
-            onFileSave();
-            return true;
-        } else if (event->keyval == GDK_KEY_n) {
-            onFileNew();
-            return true;
-        } else if (event->keyval == GDK_KEY_o) {
-            onFileOpen();
-            return true;
-        } else if (event->keyval == GDK_KEY_p) {
-            onQuickOpen();
-            return true;
-        } else if (event->keyval == GDK_KEY_f) {
-            onEditFind();
-            return true;
-        } else if (event->keyval == GDK_KEY_h) {
-            onEditFindReplace();
-            return true;
-        }
-    }
-
-    if (event->state & GDK_MOD1_MASK) {
-        if (event->keyval == GDK_KEY_h) {
-            onSplitHorizontal();
-            return true;
-        } else if (event->keyval == GDK_KEY_v) {
-            onSplitVertical();
-            return true;
-        }
-    }
-
-    return Gtk::ApplicationWindow::on_key_press_event(event);
 }
 
 void MainWindow::onFileSaveAs() {
