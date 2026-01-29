@@ -25,6 +25,13 @@ public:
         size_t startOffset = 0,
         bool caseSensitive = true
     );
+
+    static SearchResult findPrevious(
+        const std::string& text,
+        const std::string& pattern,
+        size_t startOffset,
+        bool caseSensitive = true
+    );
 };
 
 } // namespace xenon::features

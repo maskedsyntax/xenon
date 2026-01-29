@@ -26,6 +26,11 @@ public:
     void setLanguage(const std::string& lang);
     bool isModified() const;
 
+    void findNext(const std::string& text, bool caseSensitive, bool regex);
+    void findPrevious(const std::string& text, bool caseSensitive, bool regex);
+    void replace(const std::string& text, const std::string& replacement, bool caseSensitive, bool regex);
+    void replaceAll(const std::string& text, const std::string& replacement, bool caseSensitive, bool regex);
+
 private:
     std::unique_ptr<xenon::core::Document> document_;
     Glib::RefPtr<Gsv::Buffer> source_buffer_;

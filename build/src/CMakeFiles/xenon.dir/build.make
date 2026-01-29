@@ -92,10 +92,9 @@ xenon_EXTERNAL_OBJECTS =
 
 bin/xenon: src/CMakeFiles/xenon.dir/main.cpp.o
 bin/xenon: src/CMakeFiles/xenon.dir/build.make
-bin/xenon: src/core/libxenon_core.a
-bin/xenon: src/features/libxenon_features.a
-bin/xenon: src/services/libxenon_services.a
 bin/xenon: src/ui/libxenon_ui.a
+bin/xenon: src/services/libxenon_services.a
+bin/xenon: src/features/libxenon_features.a
 bin/xenon: src/core/libxenon_core.a
 bin/xenon: src/CMakeFiles/xenon.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/batman/maskedsyntax/xenon/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking CXX executable ../bin/xenon"

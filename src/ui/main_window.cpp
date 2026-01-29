@@ -34,6 +34,10 @@ void MainWindow::setupUI() {
 
     // Setup search dialog
     search_dialog_ = std::make_unique<SearchReplaceDialog>(*this);
+    search_dialog_->signal_find_next().connect(sigc::mem_fun(*this, &MainWindow::onFindNext));
+    search_dialog_->signal_find_previous().connect(sigc::mem_fun(*this, &MainWindow::onFindPrevious));
+    search_dialog_->signal_replace().connect(sigc::mem_fun(*this, &MainWindow::onReplace));
+    search_dialog_->signal_replace_all().connect(sigc::mem_fun(*this, &MainWindow::onReplaceAll));
 
     // Setup quick open dialog
     quick_open_dialog_ = std::make_unique<QuickOpenDialog>(*this);
@@ -254,6 +258,52 @@ void MainWindow::onEditFind() {
 void MainWindow::onEditFindReplace() {
     search_dialog_->showSearchReplace();
     search_dialog_->show();
+}
+
+void MainWindow::onFindNext() {
+    auto editor = getActiveEditor();
+    if (editor) {
+        editor->findNext(
+            search_dialog_->getSearchText(),
+            search_dialog_->isCaseSensitive(),
+            search_dialog_->isRegex()
+        );
+    }
+}
+
+void MainWindow::onFindPrevious() {
+    auto editor = getActiveEditor();
+    if (editor) {
+        editor->findPrevious(
+            search_dialog_->getSearchText(),
+            search_dialog_->isCaseSensitive(),
+            search_dialog_->isRegex()
+        );
+    }
+}
+
+void MainWindow::onReplace() {
+    auto editor = getActiveEditor();
+    if (editor) {
+        editor->replace(
+            search_dialog_->getSearchText(),
+            search_dialog_->getReplaceText(),
+            search_dialog_->isCaseSensitive(),
+            search_dialog_->isRegex()
+        );
+    }
+}
+
+void MainWindow::onReplaceAll() {
+    auto editor = getActiveEditor();
+    if (editor) {
+        editor->replaceAll(
+            search_dialog_->getSearchText(),
+            search_dialog_->getReplaceText(),
+            search_dialog_->isCaseSensitive(),
+            search_dialog_->isRegex()
+        );
+    }
 }
 
 

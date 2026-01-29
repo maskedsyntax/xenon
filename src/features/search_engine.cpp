@@ -49,4 +49,27 @@ SearchResult SearchEngine::findNext(
     return SearchResult{std::string::npos, 0};
 }
 
+SearchResult SearchEngine::findPrevious(
+    const std::string& text,
+    const std::string& pattern,
+    size_t startOffset,
+    bool caseSensitive) {
+    auto results = findAll(text, pattern, caseSensitive);
+
+    // Find the last result that ends before or at startOffset? 
+    // Usually "Previous" means result strictly BEFORE the cursor.
+    
+    if (results.empty()) {
+        return SearchResult{std::string::npos, 0};
+    }
+
+    for (auto it = results.rbegin(); it != results.rend(); ++it) {
+        if (it->offset < startOffset) {
+            return *it;
+        }
+    }
+
+    return SearchResult{std::string::npos, 0};
+}
+
 } // namespace xenon::features

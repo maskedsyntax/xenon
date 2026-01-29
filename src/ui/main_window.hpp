@@ -40,10 +40,17 @@ private:
     void onFileSave();
     void onFileSaveAs();
     void onFileQuit();
-    void onEditFind();
-    void onEditFindReplace();
-    void onQuickOpen();
-    void onSplitHorizontal();
+        void onEditFind();
+        void onEditFindReplace();
+    
+        // Search dialog signal handlers
+        void onFindNext();
+        void onFindPrevious();
+        void onReplace();
+        void onReplaceAll();
+    
+        void onQuickOpen();
+        void onSplitHorizontal();
     void onSplitVertical();
     void onSelectLanguage();
 };
