@@ -1,6 +1,8 @@
 add_library(xenon_ui STATIC
     main_window.cpp
     editor_widget.cpp
+    quick_open_dialog.cpp
+    search_replace_dialog.cpp
 )
 
 target_include_directories(xenon_ui

@@ -1,13 +1,10 @@
 #pragma once
 
 #include <gtkmm.h>
+#include <gtksourceviewmm.h>
 #include <memory>
 #include <string>
 #include "core/document.hpp"
-
-#ifdef HAVE_GTKSOURCEVIEWMM
-#include <gtksourceviewmm.h>
-#endif
 
 namespace xenon::ui {
 
@@ -27,15 +24,8 @@ public:
 
 private:
     std::unique_ptr<xenon::core::Document> document_;
-
-#ifdef HAVE_GTKSOURCEVIEWMM
-    Glib::RefPtr<gtksourceview::Buffer> source_buffer_;
-    Glib::RefPtr<gtksourceview::View> source_view_;
-#else
-    Glib::RefPtr<Gtk::TextBuffer> text_buffer_;
-    Gtk::TextView* text_view_;
-#endif
-
+    Glib::RefPtr<Gsv::Buffer> source_buffer_;
+    Gsv::View* source_view_;
     std::string file_path_;
 
     void onDocumentChanged();
