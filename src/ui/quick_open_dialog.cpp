@@ -54,9 +54,15 @@ void QuickOpenDialog::loadFiles() {
     // In a real app, do this in a thread
     try {
         for (const auto& entry : fs::recursive_directory_iterator(working_dir_)) {
+            std::string pathStr = entry.path().string();
+            // Simple check to ignore .git folders
+            if (pathStr.find("/.git/") != std::string::npos || pathStr.find("/.git") != std::string::npos) {
+                continue;
+            }
+
             if (fs::is_regular_file(entry)) {
                 FileEntry fe;
-                fe.path = entry.path().string();
+                fe.path = pathStr;
                 fe.displayName = fs::relative(entry.path(), working_dir_).string();
                 fe.isDirectory = false;
                 all_files_.push_back(fe);
