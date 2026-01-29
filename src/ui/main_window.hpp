@@ -36,6 +36,7 @@ private:
     EditorWidget* getActiveEditor();
     void onFileNew();
     void onFileOpen();
+    void onOpenFolder();
     void onFileSave();
     void onFileSaveAs();
     void onFileQuit();

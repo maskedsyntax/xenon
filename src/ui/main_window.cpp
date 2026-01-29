@@ -50,9 +50,13 @@ void MainWindow::setupMenuBar() {
     newItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onFileNew));
     fileMenu->append(*newItem);
 
-    auto openItem = Gtk::manage(new Gtk::MenuItem("_Open", true));
+    auto openItem = Gtk::manage(new Gtk::MenuItem("_Open File", true));
     openItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onFileOpen));
     fileMenu->append(*openItem);
+
+    auto openFolderItem = Gtk::manage(new Gtk::MenuItem("Open _Folder", true));
+    openFolderItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onOpenFolder));
+    fileMenu->append(*openFolderItem);
 
     auto saveItem = Gtk::manage(new Gtk::MenuItem("_Save", true));
     saveItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onFileSave));
@@ -88,11 +92,11 @@ void MainWindow::setupMenuBar() {
     // View menu
     auto viewMenu = Gtk::manage(new Gtk::Menu());
 
-    auto splitHorizontalItem = Gtk::manage(new Gtk::MenuItem("Split _Horizontally", true));
+    auto splitHorizontalItem = Gtk::manage(new Gtk::MenuItem("Split _Horizontally (Ctrl+Alt+H)", true));
     splitHorizontalItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onSplitHorizontal));
     viewMenu->append(*splitHorizontalItem);
 
-    auto splitVerticalItem = Gtk::manage(new Gtk::MenuItem("Split _Vertically", true));
+    auto splitVerticalItem = Gtk::manage(new Gtk::MenuItem("Split _Vertically (Ctrl+Alt+V)", true));
     splitVerticalItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onSplitVertical));
     viewMenu->append(*splitVerticalItem);
 
@@ -162,6 +166,20 @@ void MainWindow::onFileOpen() {
     }
 }
 
+void MainWindow::onOpenFolder() {
+    Gtk::FileChooserDialog dialog("Open Folder", Gtk::FILE_CHOOSER_ACTION_SELECT_FOLDER);
+    dialog.set_transient_for(*this);
+
+    dialog.add_button(Gtk::Stock::CANCEL, Gtk::RESPONSE_CANCEL);
+    dialog.add_button(Gtk::Stock::OPEN, Gtk::RESPONSE_OK);
+
+    if (dialog.run() == Gtk::RESPONSE_OK) {
+        std::string folder = dialog.get_filename();
+        working_directory_ = folder;
+        quick_open_dialog_->setWorkingDirectory(folder);
+    }
+}
+
 void MainWindow::onFileSave() {
     EditorWidget* editor = getActiveEditor();
     if (editor) {
@@ -201,11 +219,11 @@ bool MainWindow::on_key_press_event(GdkEventKey* event) {
         }
     }
 
-    if ((event->state & GDK_CONTROL_MASK) && (event->state & GDK_SHIFT_MASK)) {
-        if (event->keyval == GDK_KEY_minus) {
+    if ((event->state & GDK_CONTROL_MASK) && (event->state & GDK_MOD1_MASK)) {
+        if (event->keyval == GDK_KEY_h) {
             onSplitHorizontal();
             return true;
-        } else if (event->keyval == GDK_KEY_backslash) {
+        } else if (event->keyval == GDK_KEY_v) {
             onSplitVertical();
             return true;
         }
