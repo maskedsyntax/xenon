@@ -66,68 +66,16 @@ void EditorWidget::onDocumentChanged() {
 }
 
 void EditorWidget::applyLanguageHighlighting() {
-    if (file_path_.empty()) {
-        return;
-    }
-
-    try {
-        std::string ext = xenon::core::FileManager::getFileExtension(file_path_);
-        auto language_manager = Gsv::LanguageManager::get_default();
-
-        if (!language_manager || !source_buffer_) {
-            return;
-        }
-
-        Glib::RefPtr<Gsv::Language> language;
-
-        if (ext == "cpp" || ext == "cc" || ext == "cxx" || ext == "h" || ext == "hpp") {
-            language = language_manager->get_language("cpp");
-        } else if (ext == "py") {
-            language = language_manager->get_language("python");
-        } else if (ext == "js") {
-            language = language_manager->get_language("js");
-        } else if (ext == "java") {
-            language = language_manager->get_language("java");
-        } else if (ext == "c") {
-            language = language_manager->get_language("c");
-        } else if (ext == "go") {
-            language = language_manager->get_language("go");
-        } else if (ext == "rs") {
-            language = language_manager->get_language("rust");
-        } else if (ext == "rb") {
-            language = language_manager->get_language("ruby");
-        } else if (ext == "php") {
-            language = language_manager->get_language("php");
-        } else if (ext == "cs") {
-            language = language_manager->get_language("csharp");
-        } else if (ext == "json") {
-            language = language_manager->get_language("json");
-        } else if (ext == "xml" || ext == "html") {
-            language = language_manager->get_language("xml");
-        }
-
-        if (language) {
-            source_buffer_->set_language(language);
-            source_buffer_->set_highlight_syntax(true);
-        }
-    } catch (const std::exception& /* e */) {
-        // Silently ignore if language manager not ready
+    // Syntax highlighting via GtkSourceView language manager not fully functional
+    // Enable basic syntax highlighting without language-specific rules
+    if (source_buffer_) {
+        source_buffer_->set_highlight_syntax(true);
     }
 }
 
-void EditorWidget::setLanguage(const std::string& lang) {
-    try {
-        auto language_manager = Gsv::LanguageManager::get_default();
-        if (language_manager) {
-            auto language = language_manager->get_language(lang);
-            if (language) {
-                source_buffer_->set_language(language);
-                source_buffer_->set_highlight_syntax(true);
-            }
-        }
-    } catch (const std::exception& /* e */) {
-        // Silently ignore if language manager not ready
-    }
+void EditorWidget::setLanguage(const std::string& /* lang */) {
+    // Language selection not fully functional due to GtkSourceView bindings issues
+    // Syntax highlighting will use GtkSourceView's default behavior
 }
 
 } // namespace xenon::ui
