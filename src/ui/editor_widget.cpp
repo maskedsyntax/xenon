@@ -70,49 +70,63 @@ void EditorWidget::applyLanguageHighlighting() {
         return;
     }
 
-    std::string ext = xenon::core::FileManager::getFileExtension(file_path_);
-    auto language_manager = Gsv::LanguageManager::get_default();
+    try {
+        std::string ext = xenon::core::FileManager::getFileExtension(file_path_);
+        auto language_manager = Gsv::LanguageManager::get_default();
 
-    Glib::RefPtr<Gsv::Language> language;
+        if (!language_manager) {
+            return;
+        }
 
-    if (ext == "cpp" || ext == "cc" || ext == "cxx" || ext == "h" || ext == "hpp") {
-        language = language_manager->get_language("cpp");
-    } else if (ext == "py") {
-        language = language_manager->get_language("python");
-    } else if (ext == "js") {
-        language = language_manager->get_language("js");
-    } else if (ext == "java") {
-        language = language_manager->get_language("java");
-    } else if (ext == "c") {
-        language = language_manager->get_language("c");
-    } else if (ext == "go") {
-        language = language_manager->get_language("go");
-    } else if (ext == "rs") {
-        language = language_manager->get_language("rust");
-    } else if (ext == "rb") {
-        language = language_manager->get_language("ruby");
-    } else if (ext == "php") {
-        language = language_manager->get_language("php");
-    } else if (ext == "cs") {
-        language = language_manager->get_language("csharp");
-    } else if (ext == "json") {
-        language = language_manager->get_language("json");
-    } else if (ext == "xml" || ext == "html") {
-        language = language_manager->get_language("xml");
-    }
+        Glib::RefPtr<Gsv::Language> language;
 
-    if (language) {
-        source_buffer_->set_language(language);
-        source_buffer_->set_highlight_syntax(true);
+        if (ext == "cpp" || ext == "cc" || ext == "cxx" || ext == "h" || ext == "hpp") {
+            language = language_manager->get_language("cpp");
+        } else if (ext == "py") {
+            language = language_manager->get_language("python");
+        } else if (ext == "js") {
+            language = language_manager->get_language("js");
+        } else if (ext == "java") {
+            language = language_manager->get_language("java");
+        } else if (ext == "c") {
+            language = language_manager->get_language("c");
+        } else if (ext == "go") {
+            language = language_manager->get_language("go");
+        } else if (ext == "rs") {
+            language = language_manager->get_language("rust");
+        } else if (ext == "rb") {
+            language = language_manager->get_language("ruby");
+        } else if (ext == "php") {
+            language = language_manager->get_language("php");
+        } else if (ext == "cs") {
+            language = language_manager->get_language("csharp");
+        } else if (ext == "json") {
+            language = language_manager->get_language("json");
+        } else if (ext == "xml" || ext == "html") {
+            language = language_manager->get_language("xml");
+        }
+
+        if (language) {
+            source_buffer_->set_language(language);
+            source_buffer_->set_highlight_syntax(true);
+        }
+    } catch (const std::exception& /* e */) {
+        // Silently ignore if language manager not ready
     }
 }
 
 void EditorWidget::setLanguage(const std::string& lang) {
-    auto language_manager = Gsv::LanguageManager::get_default();
-    auto language = language_manager->get_language(lang);
-    if (language) {
-        source_buffer_->set_language(language);
-        source_buffer_->set_highlight_syntax(true);
+    try {
+        auto language_manager = Gsv::LanguageManager::get_default();
+        if (language_manager) {
+            auto language = language_manager->get_language(lang);
+            if (language) {
+                source_buffer_->set_language(language);
+                source_buffer_->set_highlight_syntax(true);
+            }
+        }
+    } catch (const std::exception& /* e */) {
+        // Silently ignore if language manager not ready
     }
 }
 
