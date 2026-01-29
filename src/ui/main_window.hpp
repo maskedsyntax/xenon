@@ -2,7 +2,7 @@
 
 #include <gtkmm.h>
 #include <memory>
-#include "ui/editor_widget.hpp"
+#include "ui/split_pane_container.hpp"
 #include "ui/quick_open_dialog.hpp"
 #include "ui/search_replace_dialog.hpp"
 
@@ -26,12 +26,14 @@ private:
     Gtk::Statusbar statusbar_;
     std::unique_ptr<SearchReplaceDialog> search_dialog_;
     std::unique_ptr<QuickOpenDialog> quick_open_dialog_;
-    std::vector<std::unique_ptr<EditorWidget>> editors_;
+    std::vector<std::unique_ptr<SplitPaneContainer>> split_panes_;
     std::string working_directory_;
 
     void setupMenuBar();
     void setupUI();
     void createNewTab();
+    SplitPaneContainer* getCurrentSplitPane();
+    EditorWidget* getActiveEditor();
     void onFileNew();
     void onFileOpen();
     void onFileSave();
@@ -40,6 +42,8 @@ private:
     void onEditFind();
     void onEditFindReplace();
     void onQuickOpen();
+    void onSplitHorizontal();
+    void onSplitVertical();
 };
 
 } // namespace xenon::ui
