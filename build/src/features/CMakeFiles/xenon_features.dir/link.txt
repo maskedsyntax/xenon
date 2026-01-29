@@ -1,2 +1,0 @@
-/usr/bin/ar qc libxenon_features.a CMakeFiles/xenon_features.dir/search_engine.cpp.o
-/usr/bin/ranlib libxenon_features.a
