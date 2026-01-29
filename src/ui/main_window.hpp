@@ -26,7 +26,7 @@ private:
     Gtk::Statusbar statusbar_;
     std::unique_ptr<SearchReplaceDialog> search_dialog_;
     std::unique_ptr<QuickOpenDialog> quick_open_dialog_;
-    std::vector<std::unique_ptr<SplitPaneContainer>> split_panes_;
+    std::vector<SplitPaneContainer*> split_panes_;
     std::string working_directory_;
 
     void setupMenuBar();
