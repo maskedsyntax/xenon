@@ -1,77 +1,106 @@
-# TabbedInk 🖊️
+# Xenon Text Editor
 
-**TabbedInk** is a lightweight and modern text editor designed for simplicity and efficiency. It is built using Python's **Tkinter** library and currently offers essential features like creating, opening, saving, and editing text files. The project is in its initial phase, and development will resume in 3-4 months to implement advanced features and a polished user interface.
+A modern, lightweight text and code editor built with C++17 and GTK 3. Xenon combines the simplicity of Kate with the user experience of Visual Studio Code.
 
----
+## Features
 
-## 🌟 Current Features
+Core Editing
+- Syntax highlighting for 100+ languages via GtkSourceView 3.0
+- Code completion with context-aware suggestions
+- Search and replace with regular expression support
+- Code formatting and linting integration
+- Undo and redo operations
 
-- **File Operations**:
-  - Open, save, and create new text files.
-- **Basic Text Editing**:
-  - Write, edit, and delete text.
-- **Clipboard Operations**:
-  - Cut, copy, and paste.
+User Interface
+- Tabbed multi-file editing
+- Split pane editing (horizontal and vertical)
+- File explorer sidebar with directory tree
+- Quick file opening with fuzzy search (Ctrl+P)
+- Settings manager with JSON configuration
+- Light and dark themes
 
----
+Advanced Features
+- Built-in terminal emulator
+- Git integration (status, commit, branch, diff)
+- Plugin system for extensibility
+- Auto-save and crash recovery
+- Cross-platform support (Linux, Windows, macOS)
 
-## 🛠️ Planned Features (Phase 2)
+## Requirements
 
-When development resumes, the following features will be implemented:
+- C++17 compatible compiler (GCC 7+, Clang 6+, MSVC 2019+)
+- CMake 3.10 or later
+- GTK 3.22 or later
+- GtkSourceView 3.0
+- VTE 2.91
+- libgit2
 
-### **Core Enhancements**
-- **Tabbed Editing**:
-  - Support for opening multiple files in tabs for easy multitasking.
-- **UI Overhaul**:
-  - Implement a modern, responsive design using **ttk** or **CustomTkinter**.
-- **Search and Replace**:
-  - Quickly find and replace text within the editor.
+## Installation
 
-### **Additional Features**
-- **Word Count**:
-  - Display word and character count in the status bar.
-- **Font Customization**:
-  - Options to change font size, style, and type.
-- **Dark Mode**:
-  - Toggle between light and dark themes for better usability.
-- **Keyboard Shortcuts**:
-  - Convenient shortcuts for frequent actions.
+### Ubuntu/Debian
 
----
+```bash
+sudo apt-get install \
+  libgtk-3-dev \
+  libgtksourceview-3.0-dev \
+  libvte-2.91-dev \
+  libgtkmm-3.0-dev \
+  libgtksourceviewmm-3.0-dev \
+  libgit2-dev \
+  pkg-config
+```
 
-## 🗓️ Roadmap
+## Building
 
-### Phase 1 (Completed)
-- Basic text editor functionality with file operations and editing.
+```bash
+mkdir build
+cd build
+cmake ..
+make
+```
 
-### Phase 2 (3-4 Months Later)
-- Start implementing advanced features like tabbed editing, search/replace, and a revamped UI.
+The executable will be created at `build/bin/xenon`.
 
-### Phase 3
-- Add final touches:
-  - Word count display.
-  - Dark mode and additional themes.
-  - Optimize performance and usability.
+## Running
 
----
+```bash
+./build/bin/xenon
+```
 
-## 🤝 Contributing
+## Architecture
 
-TabbedInk is currently in its planning phase for the next set of features. Contributions will be welcomed once development resumes. Stay tuned for updates on how you can participate!
+Xenon follows a layered architecture with clear separation of concerns:
 
----
+- Core Layer: Framework-agnostic data structures and business logic
+- Features Layer: Search, formatting, linting, code completion
+- Services Layer: Settings management, Git integration, plugins
+- UI Layer: GTK-based user interface
 
-## 📜 License
+## Project Structure
 
-This project is licensed under the **MIT License**, allowing for open collaboration and contributions. A LICENSE file will be added as part of the repository setup.
+```
+src/
+├── core/              # Data structures and core logic
+├── features/          # Search, formatting, linting
+├── services/          # Settings, Git, plugins
+└── ui/               # GTK user interface
+```
 
----
+## Code Standards
 
-## 💬 Acknowledgments
+This project follows strict production-grade code standards:
 
-- Inspired by the simplicity of traditional text editors.
-- Thanks to the **Tkinter** and **CustomTkinter** communities for their tools in building modern UIs.
+- Modular design with single responsibility per module
+- No global mutable state
+- Comprehensive error handling
+- Security by default
+- Minimal external dependencies
+- Extensive testing of core features
 
----
+## License
 
-**Note**: The project is currently functional with basic features and will undergo major development after 3-4 months.
+MIT License
+
+## Development Status
+
+Active development. Implementing core features and establishing foundation for future extensions.
