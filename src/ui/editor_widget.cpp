@@ -107,4 +107,13 @@ void EditorWidget::applyLanguageHighlighting() {
     }
 }
 
+void EditorWidget::setLanguage(const std::string& lang) {
+    auto language_manager = Gsv::LanguageManager::get_default();
+    auto language = language_manager->get_language(lang);
+    if (language) {
+        source_buffer_->set_language(language);
+        source_buffer_->set_highlight_syntax(true);
+    }
+}
+
 } // namespace xenon::ui
