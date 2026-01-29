@@ -1,0 +1,2 @@
+/usr/bin/ar qc libxenon_core.a CMakeFiles/xenon_core.dir/document.cpp.o CMakeFiles/xenon_core.dir/edit_history.cpp.o CMakeFiles/xenon_core.dir/text_position.cpp.o CMakeFiles/xenon_core.dir/text_range.cpp.o CMakeFiles/xenon_core.dir/file_manager.cpp.o
+/usr/bin/ranlib libxenon_core.a
