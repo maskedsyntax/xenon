@@ -45,6 +45,7 @@ private:
     void onQuickOpen();
     void onSplitHorizontal();
     void onSplitVertical();
+    void onSelectLanguage();
 };
 
 } // namespace xenon::ui

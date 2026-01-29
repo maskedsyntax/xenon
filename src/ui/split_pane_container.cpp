@@ -11,6 +11,10 @@ SplitPaneContainer::SplitPaneContainer()
     set_vexpand(true);
 
     auto editor = Gtk::manage(new EditorWidget());
+    editor->signal_focus_in_event().connect([this, editor](GdkEventFocus* /* event */) {
+        active_editor_ = editor;
+        return false;
+    });
     pack_start(*editor, true, true);
     root_widget_ = editor;
     active_editor_ = editor;
@@ -66,6 +70,10 @@ void SplitPaneContainer::replaceWithPaned(bool horizontal) {
 
     // Create and add new editor to second pane
     auto new_editor = Gtk::manage(new EditorWidget());
+    new_editor->signal_focus_in_event().connect([this, new_editor](GdkEventFocus* /* event */) {
+        active_editor_ = new_editor;
+        return false;
+    });
     paned->pack2(*new_editor, true, true);
 
     // Add paned to this container

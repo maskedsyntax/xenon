@@ -96,9 +96,15 @@ void MainWindow::setupMenuBar() {
     splitHorizontalItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onSplitHorizontal));
     viewMenu->append(*splitHorizontalItem);
 
-    auto splitVerticalItem = Gtk::manage(new Gtk::MenuItem("Split _Vertically (Ctrl+Alt+V)", true));
+    auto splitVerticalItem = Gtk::manage(new Gtk::MenuItem("Split _Vertically (Alt+V)", true));
     splitVerticalItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onSplitVertical));
     viewMenu->append(*splitVerticalItem);
+
+    viewMenu->append(*Gtk::manage(new Gtk::SeparatorMenuItem()));
+
+    auto selectLangItem = Gtk::manage(new Gtk::MenuItem("Set _Language", true));
+    selectLangItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onSelectLanguage));
+    viewMenu->append(*selectLangItem);
 
     auto viewMenuitem = Gtk::manage(new Gtk::MenuItem("_View", true));
     viewMenuitem->set_submenu(*viewMenu);
@@ -219,7 +225,7 @@ bool MainWindow::on_key_press_event(GdkEventKey* event) {
         }
     }
 
-    if ((event->state & GDK_CONTROL_MASK) && (event->state & GDK_MOD1_MASK)) {
+    if (event->state & GDK_MOD1_MASK) {
         if (event->keyval == GDK_KEY_h) {
             onSplitHorizontal();
             return true;
@@ -267,6 +273,7 @@ void MainWindow::onEditFindReplace() {
 
 
 void MainWindow::onQuickOpen() {
+    quick_open_dialog_->setWorkingDirectory(working_directory_);
     quick_open_dialog_->show();
     if (quick_open_dialog_->run() == Gtk::RESPONSE_OK) {
         std::string filepath = quick_open_dialog_->getSelectedFile();
@@ -305,6 +312,65 @@ void MainWindow::onSplitVertical() {
     auto split_pane = getCurrentSplitPane();
     if (split_pane) {
         split_pane->splitVertical();
+    }
+}
+
+void MainWindow::onSelectLanguage() {
+    EditorWidget* editor = getActiveEditor();
+    if (!editor) {
+        return;
+    }
+
+    std::vector<std::pair<std::string, std::string>> languages = {
+        {"C++", "cpp"},
+        {"Python", "python"},
+        {"JavaScript", "js"},
+        {"Java", "java"},
+        {"C", "c"},
+        {"Go", "go"},
+        {"Rust", "rust"},
+        {"Ruby", "ruby"},
+        {"PHP", "php"},
+        {"C#", "csharp"},
+        {"JSON", "json"},
+        {"XML", "xml"},
+        {"HTML", "html"},
+    };
+
+    Gtk::Dialog dialog("Select Language", *this, true);
+    dialog.set_default_size(300, 400);
+
+    auto contentArea = dialog.get_content_area();
+    Gtk::ScrolledWindow scrolled;
+    scrolled.set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC);
+
+    Gtk::ListBox listBox;
+    scrolled.add(listBox);
+
+    for (const auto& [name, lang] : languages) {
+        auto label = Gtk::manage(new Gtk::Label(name));
+        label->set_halign(Gtk::ALIGN_START);
+        label->set_margin_start(12);
+        label->set_margin_top(8);
+        label->set_margin_bottom(8);
+        listBox.append(*label);
+    }
+
+    contentArea->pack_start(scrolled, true, true);
+    contentArea->show_all();
+
+    dialog.add_button(Gtk::Stock::CANCEL, Gtk::RESPONSE_CANCEL);
+    dialog.add_button(Gtk::Stock::OK, Gtk::RESPONSE_OK);
+
+    int row = 0;
+    listBox.signal_row_selected().connect([&](Gtk::ListBoxRow* selected_row) {
+        if (selected_row) {
+            row = selected_row->get_index();
+        }
+    });
+
+    if (dialog.run() == Gtk::RESPONSE_OK && row >= 0 && row < static_cast<int>(languages.size())) {
+        editor->setLanguage(languages[row].second);
     }
 }
 
