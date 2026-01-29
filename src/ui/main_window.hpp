@@ -15,10 +15,10 @@ public:
 
 protected:
     bool on_delete_event(GdkEventAny* /* any_event */) override;
-    bool on_key_press_event(GdkEventKey* event) override;
 
 private:
     Glib::RefPtr<Gtk::Application> app_;
+    Glib::RefPtr<Gtk::AccelGroup> accel_group_;
     Gtk::Box main_box_{Gtk::ORIENTATION_VERTICAL};
     Gtk::Box content_box_{Gtk::ORIENTATION_HORIZONTAL};
     Gtk::MenuBar menubar_;

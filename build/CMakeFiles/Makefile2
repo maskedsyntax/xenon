@@ -164,10 +164,10 @@ src/ui/clean: src/ui/CMakeFiles/xenon_ui.dir/clean
 # Target rules for target src/CMakeFiles/xenon.dir
 
 # All Build rule for target.
+src/CMakeFiles/xenon.dir/all: src/ui/CMakeFiles/xenon_ui.dir/all
 src/CMakeFiles/xenon.dir/all: src/core/CMakeFiles/xenon_core.dir/all
 src/CMakeFiles/xenon.dir/all: src/features/CMakeFiles/xenon_features.dir/all
 src/CMakeFiles/xenon.dir/all: src/services/CMakeFiles/xenon_services.dir/all
-src/CMakeFiles/xenon.dir/all: src/ui/CMakeFiles/xenon_ui.dir/all
 	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/xenon.dir/build.make src/CMakeFiles/xenon.dir/depend
 	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/xenon.dir/build.make src/CMakeFiles/xenon.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/batman/maskedsyntax/xenon/build/CMakeFiles --progress-num=1,2 "Built target xenon"
