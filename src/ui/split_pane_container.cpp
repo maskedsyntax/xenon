@@ -11,7 +11,6 @@ SplitPaneContainer::SplitPaneContainer()
     set_vexpand(true);
 
     auto editor = Gtk::manage(new EditorWidget());
-    editor->setLanguage("cpp");
     pack_start(*editor, true, true);
     root_widget_ = editor;
     active_editor_ = editor;
@@ -67,7 +66,6 @@ void SplitPaneContainer::replaceWithPaned(bool horizontal) {
 
     // Create and add new editor to second pane
     auto new_editor = Gtk::manage(new EditorWidget());
-    new_editor->setLanguage("cpp");
     paned->pack2(*new_editor, true, true);
 
     // Add paned to this container
