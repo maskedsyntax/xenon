@@ -4,7 +4,10 @@
 int main(int argc, char* argv[]) {
     auto app = Gtk::Application::create(argc, argv, "org.xenon.Editor");
 
-    xenon::ui::MainWindow window(app);
+    app->signal_startup().connect([app]() {
+        auto window = new xenon::ui::MainWindow(app);
+        window->present();
+    });
 
-    return app->run(window);
+    return app->run();
 }

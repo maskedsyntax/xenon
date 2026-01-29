@@ -106,16 +106,16 @@ void MainWindow::setupMenuBar() {
 }
 
 void MainWindow::createNewTab() {
-    auto split_pane = std::make_unique<SplitPaneContainer>();
+    auto split_pane = Gtk::manage(new SplitPaneContainer());
     int pageNum = notebook_.append_page(*split_pane, "Untitled");
     notebook_.set_current_page(pageNum);
-    split_panes_.push_back(std::move(split_pane));
+    split_panes_.push_back(split_pane);
 }
 
 SplitPaneContainer* MainWindow::getCurrentSplitPane() {
     int pageNum = notebook_.get_current_page();
     if (pageNum >= 0 && pageNum < static_cast<int>(split_panes_.size())) {
-        return split_panes_[pageNum].get();
+        return split_panes_[pageNum];
     }
     return nullptr;
 }
