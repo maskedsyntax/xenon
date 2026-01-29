@@ -76,8 +76,18 @@ void SplitPaneContainer::replaceWithPaned(bool horizontal) {
     active_editor_ = new_editor;
     editors_.push_back(new_editor);
 
-    paned->set_position(paned->get_allocated_width() / 2);
     show_all();
+
+    // Schedule position setting after the window is realized
+    Glib::signal_idle().connect([paned]() {
+        int width = paned->get_allocated_width();
+        if (width > 0) {
+            paned->set_position(width / 2);
+        } else {
+            paned->set_position(300);
+        }
+        return false;
+    });
 }
 
 } // namespace xenon::ui

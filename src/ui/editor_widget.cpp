@@ -74,7 +74,7 @@ void EditorWidget::applyLanguageHighlighting() {
         std::string ext = xenon::core::FileManager::getFileExtension(file_path_);
         auto language_manager = Gsv::LanguageManager::get_default();
 
-        if (!language_manager) {
+        if (!language_manager || !source_buffer_) {
             return;
         }
 
