@@ -1,2 +1,0 @@
-/usr/bin/ar qc libxenon_services.a CMakeFiles/xenon_services.dir/settings_manager.cpp.o
-/usr/bin/ranlib libxenon_services.a
