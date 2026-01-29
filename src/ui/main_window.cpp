@@ -163,13 +163,18 @@ void MainWindow::createNewTab() {
     auto tabLabel = createTabLabel("Untitled", split_pane);
     notebook_.set_tab_label(*split_pane, *tabLabel);
     notebook_.set_tab_reorderable(*split_pane, true);
+    
+    split_pane->show_all(); // Ensure widget is visible
     notebook_.set_current_page(pageNum);
     
-    // Ensure the editor in the new tab grabs focus
-    auto editor = split_pane->getActiveEditor();
-    if (editor) {
-        editor->grab_focus();
-    }
+    // Defer focus grab to allow realization
+    Glib::signal_idle().connect([split_pane]() {
+        auto editor = split_pane->getActiveEditor();
+        if (editor) {
+            editor->grab_focus();
+        }
+        return false;
+    });
 }
 
 Gtk::Widget* MainWindow::createTabLabel(const std::string& title, Gtk::Widget* page) {
@@ -292,10 +297,27 @@ void MainWindow::onExplorerFileActivated(const std::string& path) {
     
     try {
         std::string content = xenon::core::FileManager::readFile(path);
-        
-        createNewTab();
+        std::string filename = xenon::core::FileManager::getFileName(path);
 
+        // Check if current tab is "Untitled" and empty (not modified). Reuse it.
         EditorWidget* editor = getActiveEditor();
+        bool reuseTab = false;
+        
+        if (editor && !editor->isModified()) {
+             // We can check if it's "Untitled" by checking file path in editor
+             if (editor->getFilePath().empty() && editor->getContent().empty()) {
+                 reuseTab = true;
+             }
+        }
+
+        if (!reuseTab) {
+            createNewTab();
+            // Need to get the new active editor. 
+            // Since createNewTab sets current page, getActiveEditor should return the new one.
+            // However, due to async GTK nature, let's force update if needed or just get it again.
+            editor = getActiveEditor();
+        }
+
         if (editor) {
             editor->setContent(content);
             editor->setFilePath(path);
@@ -303,12 +325,14 @@ void MainWindow::onExplorerFileActivated(const std::string& path) {
             // Update label
             int pageNum = notebook_.get_current_page();
             auto page = notebook_.get_nth_page(pageNum);
-            auto tabWidget = notebook_.get_tab_label(*page);
-            if (auto box = dynamic_cast<Gtk::Container*>(tabWidget)) {
-                auto children = box->get_children();
-                if (!children.empty()) {
-                    if (auto label = dynamic_cast<Gtk::Label*>(children[0])) {
-                        label->set_text(xenon::core::FileManager::getFileName(path));
+            if (page) {
+                auto tabWidget = notebook_.get_tab_label(*page);
+                if (auto box = dynamic_cast<Gtk::Container*>(tabWidget)) {
+                    auto children = box->get_children();
+                    if (!children.empty()) {
+                        if (auto label = dynamic_cast<Gtk::Label*>(children[0])) {
+                            label->set_text(filename);
+                        }
                     }
                 }
             }
