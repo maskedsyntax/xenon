@@ -2,8 +2,6 @@
 
 #include <gtkmm.h>
 #include <string>
-#include <memory>
-#include <vector>
 #include <filesystem>
 
 namespace xenon::ui {
@@ -14,30 +12,31 @@ public:
     virtual ~FileExplorer() = default;
 
     void setRootDirectory(const std::string& path);
-    std::string getSelectedFile() const;
+    std::string getSelectedFile();
+    void refresh();
 
-    sigc::signal<void, std::string>& signal_file_selected() { return signal_file_selected_; }
-    sigc::signal<void, std::string>& signal_file_activated() { return signal_file_activated_; }
+    sigc::signal<void, std::string> signal_file_activated() { return signal_file_activated_; }
 
-private:
-    struct FileNode {
-        std::string name;
-        std::string fullPath;
-        bool isDirectory;
-        std::vector<std::shared_ptr<FileNode>> children;
+protected:
+    // Tree model columns: Name, FullPath, IsDirectory
+    class ModelColumns : public Gtk::TreeModel::ColumnRecord {
+    public:
+        ModelColumns() { add(col_name); add(col_path); add(col_is_dir); }
+
+        Gtk::TreeModelColumn<Glib::ustring> col_name;
+        Gtk::TreeModelColumn<Glib::ustring> col_path;
+        Gtk::TreeModelColumn<bool> col_is_dir;
     };
 
+    ModelColumns columns_;
     Gtk::TreeView tree_view_;
     Glib::RefPtr<Gtk::TreeStore> tree_store_;
-    std::shared_ptr<FileNode> root_node_;
+    std::string root_path_;
 
-    sigc::signal<void, std::string> signal_file_selected_;
     sigc::signal<void, std::string> signal_file_activated_;
 
     void onRowActivated(const Gtk::TreeModel::Path& path, Gtk::TreeViewColumn* column);
-    void onSelectionChanged();
-    void loadDirectory(const std::shared_ptr<FileNode>& node);
-    void populateTree(const Gtk::TreeModel::Row& parentRow, const std::shared_ptr<FileNode>& node);
+    void populateDirectory(const Gtk::TreeModel::Row* parent, const std::string& path);
 };
 
 } // namespace xenon::ui

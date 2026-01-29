@@ -6,6 +6,7 @@ src/CMakeFiles/xenon.dir/main.cpp.o: /home/batman/maskedsyntax/xenon/src/main.cp
   /home/batman/maskedsyntax/xenon/src/core/text_position.hpp \
   /home/batman/maskedsyntax/xenon/src/core/text_range.hpp \
   /home/batman/maskedsyntax/xenon/src/ui/editor_widget.hpp \
+  /home/batman/maskedsyntax/xenon/src/ui/file_explorer.hpp \
   /home/batman/maskedsyntax/xenon/src/ui/quick_open_dialog.hpp \
   /home/batman/maskedsyntax/xenon/src/ui/search_replace_dialog.hpp \
   /home/batman/maskedsyntax/xenon/src/ui/split_pane_container.hpp \
@@ -2899,6 +2900,10 @@ src/CMakeFiles/xenon.dir/main.cpp.o: /home/batman/maskedsyntax/xenon/src/main.cp
 
 /usr/include/cairomm-1.0/cairomm/enums.h:
 
+/usr/include/cairomm-1.0/cairomm/context.h:
+
+/usr/include/c++/13/bits/shared_ptr_atomic.h:
+
 /usr/include/glib-2.0/gio/gdbusactiongroup.h:
 
 /usr/include/c++/13/bits/refwrap.h:
@@ -3301,6 +3306,10 @@ src/CMakeFiles/xenon.dir/main.cpp.o: /home/batman/maskedsyntax/xenon/src/main.cp
 
 /usr/include/gtk-3.0/gdk/gdkframetimings.h:
 
+/usr/lib/x86_64-linux-gnu/gtkmm-3.0/include/gtkmmconfig.h:
+
+/usr/include/c++/13/backward/auto_ptr.h:
+
 /usr/include/gdk-pixbuf-2.0/gdk-pixbuf/gdk-pixbuf-features.h:
 
 /usr/include/c++/13/bits/nested_exception.h:
@@ -3345,6 +3354,18 @@ src/CMakeFiles/xenon.dir/main.cpp.o: /home/batman/maskedsyntax/xenon/src/main.cp
 
 /usr/include/gdk-pixbuf-2.0/gdk-pixbuf/gdk-pixbuf.h:
 
+/usr/include/gtkmm-3.0/gtkmm/treeview.h:
+
+/usr/include/glibmm-2.4/glibmm/optiongroup.h:
+
+/usr/include/asm-generic/errno-base.h:
+
+/usr/include/c++/13/bits/stl_iterator_base_funcs.h:
+
+/usr/include/giomm-2.4/giomm/socket.h:
+
+/usr/include/glib-2.0/gio/gbufferedinputstream.h:
+
 /usr/include/giomm-2.4/giomm/dbusobjectskeleton.h:
 
 /usr/include/gtk-3.0/gtk/deprecated/gtkmisc.h:
@@ -3356,18 +3377,6 @@ src/CMakeFiles/xenon.dir/main.cpp.o: /home/batman/maskedsyntax/xenon/src/main.cp
 /usr/include/gtk-3.0/gtk/gtkdragsource.h:
 
 /usr/include/c++/13/cctype:
-
-/usr/lib/x86_64-linux-gnu/gtkmm-3.0/include/gtkmmconfig.h:
-
-/usr/include/c++/13/backward/auto_ptr.h:
-
-/usr/include/gtkmm-3.0/gtkmm/treeview.h:
-
-/usr/include/glibmm-2.4/glibmm/optiongroup.h:
-
-/usr/include/asm-generic/errno-base.h:
-
-/usr/include/c++/13/bits/stl_iterator_base_funcs.h:
 
 /usr/include/atkmm-1.6/atkmm/implementor.h:
 
@@ -3458,10 +3467,6 @@ src/CMakeFiles/xenon.dir/main.cpp.o: /home/batman/maskedsyntax/xenon/src/main.cp
 /usr/include/c++/13/bits/erase_if.h:
 
 /usr/include/glib-2.0/gio/gvfs.h:
-
-/usr/include/c++/13/bits/shared_ptr_atomic.h:
-
-/usr/include/cairomm-1.0/cairomm/context.h:
 
 /usr/include/atk-1.0/atk/atkutil.h:
 
@@ -3755,6 +3760,10 @@ src/CMakeFiles/xenon.dir/main.cpp.o: /home/batman/maskedsyntax/xenon/src/main.cp
 
 /usr/include/gtk-3.0/gdk/gdkpixbuf.h:
 
+/usr/include/gtk-3.0/gtk/gtkwidget.h:
+
+/usr/include/c++/13/cwchar:
+
 /usr/include/gtk-3.0/gtk/gtkwindowgroup.h:
 
 /usr/include/giomm-2.4/giomm/socketservice.h:
@@ -3871,6 +3880,8 @@ src/CMakeFiles/xenon.dir/main.cpp.o: /home/batman/maskedsyntax/xenon/src/main.cp
 
 /usr/include/c++/13/tr1/hypergeometric.tcc:
 
+/home/batman/maskedsyntax/xenon/src/ui/file_explorer.hpp:
+
 /usr/include/c++/13/tr1/modified_bessel_func.tcc:
 
 /usr/include/glib-2.0/glib/gqsort.h:
@@ -3910,10 +3921,6 @@ src/CMakeFiles/xenon.dir/main.cpp.o: /home/batman/maskedsyntax/xenon/src/main.cp
 /usr/include/giomm-2.4/giomm/emblemedicon.h:
 
 /usr/include/cairo/cairo-deprecated.h:
-
-/usr/include/glib-2.0/gio/gbufferedinputstream.h:
-
-/usr/include/giomm-2.4/giomm/socket.h:
 
 /usr/include/glib-2.0/gio/ginputstream.h:
 
@@ -5026,7 +5033,3 @@ src/CMakeFiles/xenon.dir/main.cpp.o: /home/batman/maskedsyntax/xenon/src/main.cp
 /usr/include/gtk-3.0/gtk/gtktreeviewcolumn.h:
 
 /usr/include/gtk-3.0/gtk/gtkvolumebutton.h:
-
-/usr/include/c++/13/cwchar:
-
-/usr/include/gtk-3.0/gtk/gtkwidget.h:

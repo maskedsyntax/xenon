@@ -7,6 +7,7 @@ src/CMakeFiles/xenon.dir/main.cpp.o
  /home/batman/maskedsyntax/xenon/src/core/text_position.hpp
  /home/batman/maskedsyntax/xenon/src/core/text_range.hpp
  /home/batman/maskedsyntax/xenon/src/ui/editor_widget.hpp
+ /home/batman/maskedsyntax/xenon/src/ui/file_explorer.hpp
  /home/batman/maskedsyntax/xenon/src/ui/quick_open_dialog.hpp
  /home/batman/maskedsyntax/xenon/src/ui/search_replace_dialog.hpp
  /home/batman/maskedsyntax/xenon/src/ui/split_pane_container.hpp

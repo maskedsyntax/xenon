@@ -28,6 +28,7 @@ private:
     std::vector<FileEntry> all_files_;
     std::string working_dir_;
     std::string selected_file_;
+    std::vector<FileEntry> current_results_; // Cache filtered results
 
     void loadFiles();
     void onSearchChanged();

@@ -1,6 +1,8 @@
 file(REMOVE_RECURSE
   "CMakeFiles/xenon_ui.dir/editor_widget.cpp.o"
   "CMakeFiles/xenon_ui.dir/editor_widget.cpp.o.d"
+  "CMakeFiles/xenon_ui.dir/file_explorer.cpp.o"
+  "CMakeFiles/xenon_ui.dir/file_explorer.cpp.o.d"
   "CMakeFiles/xenon_ui.dir/main_window.cpp.o"
   "CMakeFiles/xenon_ui.dir/main_window.cpp.o.d"
   "CMakeFiles/xenon_ui.dir/quick_open_dialog.cpp.o"

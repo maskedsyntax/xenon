@@ -139,13 +139,28 @@ src/ui/CMakeFiles/xenon_ui.dir/search_replace_dialog.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/xenon_ui.dir/search_replace_dialog.cpp.s"
 	cd /home/batman/maskedsyntax/xenon/build/src/ui && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/batman/maskedsyntax/xenon/src/ui/search_replace_dialog.cpp -o CMakeFiles/xenon_ui.dir/search_replace_dialog.cpp.s
 
+src/ui/CMakeFiles/xenon_ui.dir/file_explorer.cpp.o: src/ui/CMakeFiles/xenon_ui.dir/flags.make
+src/ui/CMakeFiles/xenon_ui.dir/file_explorer.cpp.o: /home/batman/maskedsyntax/xenon/src/ui/file_explorer.cpp
+src/ui/CMakeFiles/xenon_ui.dir/file_explorer.cpp.o: src/ui/CMakeFiles/xenon_ui.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/batman/maskedsyntax/xenon/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object src/ui/CMakeFiles/xenon_ui.dir/file_explorer.cpp.o"
+	cd /home/batman/maskedsyntax/xenon/build/src/ui && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/ui/CMakeFiles/xenon_ui.dir/file_explorer.cpp.o -MF CMakeFiles/xenon_ui.dir/file_explorer.cpp.o.d -o CMakeFiles/xenon_ui.dir/file_explorer.cpp.o -c /home/batman/maskedsyntax/xenon/src/ui/file_explorer.cpp
+
+src/ui/CMakeFiles/xenon_ui.dir/file_explorer.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/xenon_ui.dir/file_explorer.cpp.i"
+	cd /home/batman/maskedsyntax/xenon/build/src/ui && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/batman/maskedsyntax/xenon/src/ui/file_explorer.cpp > CMakeFiles/xenon_ui.dir/file_explorer.cpp.i
+
+src/ui/CMakeFiles/xenon_ui.dir/file_explorer.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/xenon_ui.dir/file_explorer.cpp.s"
+	cd /home/batman/maskedsyntax/xenon/build/src/ui && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/batman/maskedsyntax/xenon/src/ui/file_explorer.cpp -o CMakeFiles/xenon_ui.dir/file_explorer.cpp.s
+
 # Object files for target xenon_ui
 xenon_ui_OBJECTS = \
 "CMakeFiles/xenon_ui.dir/main_window.cpp.o" \
 "CMakeFiles/xenon_ui.dir/editor_widget.cpp.o" \
 "CMakeFiles/xenon_ui.dir/split_pane_container.cpp.o" \
 "CMakeFiles/xenon_ui.dir/quick_open_dialog.cpp.o" \
-"CMakeFiles/xenon_ui.dir/search_replace_dialog.cpp.o"
+"CMakeFiles/xenon_ui.dir/search_replace_dialog.cpp.o" \
+"CMakeFiles/xenon_ui.dir/file_explorer.cpp.o"
 
 # External object files for target xenon_ui
 xenon_ui_EXTERNAL_OBJECTS =
@@ -155,9 +170,10 @@ src/ui/libxenon_ui.a: src/ui/CMakeFiles/xenon_ui.dir/editor_widget.cpp.o
 src/ui/libxenon_ui.a: src/ui/CMakeFiles/xenon_ui.dir/split_pane_container.cpp.o
 src/ui/libxenon_ui.a: src/ui/CMakeFiles/xenon_ui.dir/quick_open_dialog.cpp.o
 src/ui/libxenon_ui.a: src/ui/CMakeFiles/xenon_ui.dir/search_replace_dialog.cpp.o
+src/ui/libxenon_ui.a: src/ui/CMakeFiles/xenon_ui.dir/file_explorer.cpp.o
 src/ui/libxenon_ui.a: src/ui/CMakeFiles/xenon_ui.dir/build.make
 src/ui/libxenon_ui.a: src/ui/CMakeFiles/xenon_ui.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/batman/maskedsyntax/xenon/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Linking CXX static library libxenon_ui.a"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/batman/maskedsyntax/xenon/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Linking CXX static library libxenon_ui.a"
 	cd /home/batman/maskedsyntax/xenon/build/src/ui && $(CMAKE_COMMAND) -P CMakeFiles/xenon_ui.dir/cmake_clean_target.cmake
 	cd /home/batman/maskedsyntax/xenon/build/src/ui && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/xenon_ui.dir/link.txt --verbose=$(VERBOSE)
 

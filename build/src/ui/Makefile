@@ -164,6 +164,30 @@ editor_widget.cpp.s:
 	cd /home/batman/maskedsyntax/xenon/build && $(MAKE) $(MAKESILENT) -f src/ui/CMakeFiles/xenon_ui.dir/build.make src/ui/CMakeFiles/xenon_ui.dir/editor_widget.cpp.s
 .PHONY : editor_widget.cpp.s
 
+file_explorer.o: file_explorer.cpp.o
+.PHONY : file_explorer.o
+
+# target to build an object file
+file_explorer.cpp.o:
+	cd /home/batman/maskedsyntax/xenon/build && $(MAKE) $(MAKESILENT) -f src/ui/CMakeFiles/xenon_ui.dir/build.make src/ui/CMakeFiles/xenon_ui.dir/file_explorer.cpp.o
+.PHONY : file_explorer.cpp.o
+
+file_explorer.i: file_explorer.cpp.i
+.PHONY : file_explorer.i
+
+# target to preprocess a source file
+file_explorer.cpp.i:
+	cd /home/batman/maskedsyntax/xenon/build && $(MAKE) $(MAKESILENT) -f src/ui/CMakeFiles/xenon_ui.dir/build.make src/ui/CMakeFiles/xenon_ui.dir/file_explorer.cpp.i
+.PHONY : file_explorer.cpp.i
+
+file_explorer.s: file_explorer.cpp.s
+.PHONY : file_explorer.s
+
+# target to generate assembly for a file
+file_explorer.cpp.s:
+	cd /home/batman/maskedsyntax/xenon/build && $(MAKE) $(MAKESILENT) -f src/ui/CMakeFiles/xenon_ui.dir/build.make src/ui/CMakeFiles/xenon_ui.dir/file_explorer.cpp.s
+.PHONY : file_explorer.cpp.s
+
 main_window.o: main_window.cpp.o
 .PHONY : main_window.o
 
@@ -273,6 +297,9 @@ help:
 	@echo "... editor_widget.o"
 	@echo "... editor_widget.i"
 	@echo "... editor_widget.s"
+	@echo "... file_explorer.o"
+	@echo "... file_explorer.i"
+	@echo "... file_explorer.s"
 	@echo "... main_window.o"
 	@echo "... main_window.i"
 	@echo "... main_window.s"
