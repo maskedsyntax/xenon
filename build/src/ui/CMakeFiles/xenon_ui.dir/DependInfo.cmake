@@ -9,6 +9,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/home/batman/maskedsyntax/xenon/src/ui/editor_widget.cpp" "src/ui/CMakeFiles/xenon_ui.dir/editor_widget.cpp.o" "gcc" "src/ui/CMakeFiles/xenon_ui.dir/editor_widget.cpp.o.d"
+  "/home/batman/maskedsyntax/xenon/src/ui/file_explorer.cpp" "src/ui/CMakeFiles/xenon_ui.dir/file_explorer.cpp.o" "gcc" "src/ui/CMakeFiles/xenon_ui.dir/file_explorer.cpp.o.d"
   "/home/batman/maskedsyntax/xenon/src/ui/main_window.cpp" "src/ui/CMakeFiles/xenon_ui.dir/main_window.cpp.o" "gcc" "src/ui/CMakeFiles/xenon_ui.dir/main_window.cpp.o.d"
   "/home/batman/maskedsyntax/xenon/src/ui/quick_open_dialog.cpp" "src/ui/CMakeFiles/xenon_ui.dir/quick_open_dialog.cpp.o" "gcc" "src/ui/CMakeFiles/xenon_ui.dir/quick_open_dialog.cpp.o.d"
   "/home/batman/maskedsyntax/xenon/src/ui/search_replace_dialog.cpp" "src/ui/CMakeFiles/xenon_ui.dir/search_replace_dialog.cpp.o" "gcc" "src/ui/CMakeFiles/xenon_ui.dir/search_replace_dialog.cpp.o.d"

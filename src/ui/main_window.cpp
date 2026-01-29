@@ -43,8 +43,19 @@ void MainWindow::setupUI() {
     quick_open_dialog_ = std::make_unique<QuickOpenDialog>(*this);
     quick_open_dialog_->setWorkingDirectory(working_directory_);
 
+    // Setup File Explorer
+    file_explorer_ = std::make_unique<FileExplorer>();
+    file_explorer_->set_size_request(200, -1);
+    file_explorer_->signal_file_activated().connect(sigc::mem_fun(*this, &MainWindow::onExplorerFileActivated));
+    file_explorer_->setRootDirectory(working_directory_);
+
+    // Layout
+    main_paned_.pack1(*file_explorer_, false, false); // Resize: false, Shrink: false
     content_box_.pack_start(notebook_, true, true);
-    main_box_.pack_start(content_box_, true, true);
+    main_paned_.pack2(content_box_, true, true);
+    main_paned_.set_position(250);
+
+    main_box_.pack_start(main_paned_, true, true);
     main_box_.pack_end(statusbar_, false, false);
 
     add(main_box_);
@@ -77,6 +88,11 @@ void MainWindow::setupMenuBar() {
     auto saveAsItem = Gtk::manage(new Gtk::MenuItem("Save _As"));
     saveAsItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onFileSaveAs));
     fileMenu->append(*saveAsItem);
+    
+    auto closeTabItem = Gtk::manage(new Gtk::MenuItem("Close _Tab"));
+    closeTabItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onFileCloseTab));
+    closeTabItem->add_accelerator("activate", accel_group_, GDK_KEY_w, Gdk::CONTROL_MASK, Gtk::ACCEL_VISIBLE);
+    fileMenu->append(*closeTabItem);
 
     fileMenu->append(*Gtk::manage(new Gtk::SeparatorMenuItem()));
 
@@ -142,15 +158,56 @@ void MainWindow::setupMenuBar() {
 
 void MainWindow::createNewTab() {
     auto split_pane = Gtk::manage(new SplitPaneContainer());
-    int pageNum = notebook_.append_page(*split_pane, "Untitled");
+    // Create tab with close button
+    int pageNum = notebook_.append_page(*split_pane);
+    auto tabLabel = createTabLabel("Untitled", split_pane);
+    notebook_.set_tab_label(*split_pane, *tabLabel);
+    notebook_.set_tab_reorderable(*split_pane, true);
     notebook_.set_current_page(pageNum);
-    split_panes_.push_back(split_pane);
+    
+    // Ensure the editor in the new tab grabs focus
+    auto editor = split_pane->getActiveEditor();
+    if (editor) {
+        editor->grab_focus();
+    }
+}
+
+Gtk::Widget* MainWindow::createTabLabel(const std::string& title, Gtk::Widget* page) {
+    auto box = Gtk::manage(new Gtk::Box(Gtk::ORIENTATION_HORIZONTAL, 4));
+    auto label = Gtk::manage(new Gtk::Label(title));
+    auto closeBtn = Gtk::manage(new Gtk::Button());
+    
+    auto image = Gtk::manage(new Gtk::Image(Gtk::Stock::CLOSE, Gtk::ICON_SIZE_MENU));
+    closeBtn->set_image(*image);
+    closeBtn->set_relief(Gtk::RELIEF_NONE);
+    closeBtn->set_focus_on_click(false);
+    
+    closeBtn->signal_clicked().connect(sigc::bind(sigc::mem_fun(*this, &MainWindow::closeTab), page));
+    
+    box->pack_start(*label, true, true);
+    box->pack_start(*closeBtn, false, false);
+    box->show_all();
+    
+    return box;
+}
+
+void MainWindow::closeTab(Gtk::Widget* page) {
+    int pageNum = notebook_.page_num(*page);
+    if (pageNum != -1) {
+        notebook_.remove_page(pageNum);
+    }
+    
+    // If no tabs left, create one
+    if (notebook_.get_n_pages() == 0) {
+        createNewTab();
+    }
 }
 
 SplitPaneContainer* MainWindow::getCurrentSplitPane() {
     int pageNum = notebook_.get_current_page();
-    if (pageNum >= 0 && pageNum < static_cast<int>(split_panes_.size())) {
-        return split_panes_[pageNum];
+    if (pageNum >= 0) {
+        auto widget = notebook_.get_nth_page(pageNum);
+        return dynamic_cast<SplitPaneContainer*>(widget);
     }
     return nullptr;
 }
@@ -184,10 +241,20 @@ void MainWindow::onFileOpen() {
             if (editor) {
                 editor->setContent(content);
                 editor->setFilePath(filename);
+                
+                // Update label of the new tab
                 int pageNum = notebook_.get_current_page();
-                notebook_.set_tab_label_text(
-                    *notebook_.get_nth_page(pageNum),
-                    xenon::core::FileManager::getFileName(filename));
+                auto page = notebook_.get_nth_page(pageNum);
+                auto tabWidget = notebook_.get_tab_label(*page);
+                // We need to find the label inside the box
+                if (auto box = dynamic_cast<Gtk::Container*>(tabWidget)) {
+                    auto children = box->get_children();
+                    if (!children.empty()) {
+                        if (auto label = dynamic_cast<Gtk::Label*>(children[0])) {
+                            label->set_text(xenon::core::FileManager::getFileName(filename));
+                        }
+                    }
+                }
             }
         } catch (const std::exception& e) {
             Gtk::MessageDialog errorDialog(*this, e.what(),
@@ -208,6 +275,48 @@ void MainWindow::onOpenFolder() {
         std::string folder = dialog.get_filename();
         working_directory_ = folder;
         quick_open_dialog_->setWorkingDirectory(folder);
+        file_explorer_->setRootDirectory(folder);
+    }
+}
+
+void MainWindow::onFileCloseTab() {
+    int pageNum = notebook_.get_current_page();
+    if (pageNum >= 0) {
+        auto page = notebook_.get_nth_page(pageNum);
+        closeTab(page);
+    }
+}
+
+void MainWindow::onExplorerFileActivated(const std::string& path) {
+    if (path.empty()) return;
+    
+    try {
+        std::string content = xenon::core::FileManager::readFile(path);
+        
+        createNewTab();
+
+        EditorWidget* editor = getActiveEditor();
+        if (editor) {
+            editor->setContent(content);
+            editor->setFilePath(path);
+            
+            // Update label
+            int pageNum = notebook_.get_current_page();
+            auto page = notebook_.get_nth_page(pageNum);
+            auto tabWidget = notebook_.get_tab_label(*page);
+            if (auto box = dynamic_cast<Gtk::Container*>(tabWidget)) {
+                auto children = box->get_children();
+                if (!children.empty()) {
+                    if (auto label = dynamic_cast<Gtk::Label*>(children[0])) {
+                        label->set_text(xenon::core::FileManager::getFileName(path));
+                    }
+                }
+            }
+        }
+    } catch (const std::exception& e) {
+         Gtk::MessageDialog errorDialog(*this, e.what(),
+            false, Gtk::MESSAGE_ERROR, Gtk::BUTTONS_OK);
+        errorDialog.run();
     }
 }
 

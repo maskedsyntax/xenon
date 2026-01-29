@@ -4,6 +4,7 @@ add_library(xenon_ui STATIC
     split_pane_container.cpp
     quick_open_dialog.cpp
     search_replace_dialog.cpp
+    file_explorer.cpp
 )
 
 target_include_directories(xenon_ui

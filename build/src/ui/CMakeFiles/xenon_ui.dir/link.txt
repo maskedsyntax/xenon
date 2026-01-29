@@ -1,2 +1,2 @@
-/usr/bin/ar qc libxenon_ui.a CMakeFiles/xenon_ui.dir/main_window.cpp.o CMakeFiles/xenon_ui.dir/editor_widget.cpp.o CMakeFiles/xenon_ui.dir/split_pane_container.cpp.o CMakeFiles/xenon_ui.dir/quick_open_dialog.cpp.o CMakeFiles/xenon_ui.dir/search_replace_dialog.cpp.o
+/usr/bin/ar qc libxenon_ui.a CMakeFiles/xenon_ui.dir/main_window.cpp.o CMakeFiles/xenon_ui.dir/editor_widget.cpp.o CMakeFiles/xenon_ui.dir/split_pane_container.cpp.o CMakeFiles/xenon_ui.dir/quick_open_dialog.cpp.o CMakeFiles/xenon_ui.dir/search_replace_dialog.cpp.o CMakeFiles/xenon_ui.dir/file_explorer.cpp.o
 /usr/bin/ranlib libxenon_ui.a

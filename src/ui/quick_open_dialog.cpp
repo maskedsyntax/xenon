@@ -34,8 +34,10 @@ QuickOpenDialog::QuickOpenDialog(Gtk::Window& parent)
 }
 
 void QuickOpenDialog::setWorkingDirectory(const std::string& path) {
-    working_dir_ = path;
-    loadFiles();
+    if (working_dir_ != path) {
+        working_dir_ = path;
+        loadFiles();
+    }
 }
 
 std::string QuickOpenDialog::getSelectedFile() const {
@@ -48,7 +50,8 @@ void QuickOpenDialog::loadFiles() {
     if (working_dir_.empty() || !fs::is_directory(working_dir_)) {
         return;
     }
-
+    
+    // In a real app, do this in a thread
     try {
         for (const auto& entry : fs::recursive_directory_iterator(working_dir_)) {
             if (fs::is_regular_file(entry)) {
@@ -59,12 +62,11 @@ void QuickOpenDialog::loadFiles() {
                 all_files_.push_back(fe);
             }
 
-            if (all_files_.size() > 5000) {
+            if (all_files_.size() > 10000) { // Increased limit
                 break;
             }
         }
     } catch (const fs::filesystem_error&) {
-        // Ignore errors during directory traversal
     }
 
     std::sort(all_files_.begin(), all_files_.end(),
@@ -75,20 +77,17 @@ void QuickOpenDialog::loadFiles() {
 
 void QuickOpenDialog::onSearchChanged() {
     std::string query = search_entry_.get_text();
-    auto results = fuzzyFilter(query);
-    updateFileList(results);
+    current_results_ = fuzzyFilter(query); // Cache current results
+    updateFileList(current_results_);
 }
 
 void QuickOpenDialog::onRowActivated(Gtk::ListBoxRow* row) {
     if (row) {
         int index = row->get_index();
-        if (index >= 0 && index < static_cast<int>(all_files_.size())) {
-            std::string query = search_entry_.get_text();
-            auto results = fuzzyFilter(query);
-            if (index < static_cast<int>(results.size())) {
-                selected_file_ = results[index].path;
-                response(Gtk::RESPONSE_OK);
-            }
+        // Use current_results_ instead of recalculating
+        if (index >= 0 && index < static_cast<int>(current_results_.size())) {
+            selected_file_ = current_results_[index].path;
+            response(Gtk::RESPONSE_OK);
         }
     }
 }
