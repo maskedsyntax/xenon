@@ -17,9 +17,13 @@ public:
     std::string getContent() const;
     void saveFile();
 
-    void setFilePath(const std::string& path) { file_path_ = path; }
+    void setFilePath(const std::string& path) {
+        file_path_ = path;
+        applyLanguageHighlighting();
+    }
     const std::string& getFilePath() const { return file_path_; }
 
+    void setLanguage(const std::string& lang);
     bool isModified() const;
 
 private:
