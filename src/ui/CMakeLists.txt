@@ -5,6 +5,7 @@ add_library(xenon_ui STATIC
     quick_open_dialog.cpp
     search_replace_dialog.cpp
     file_explorer.cpp
+    terminal_widget.cpp
 )
 
 target_include_directories(xenon_ui
@@ -22,3 +23,8 @@ target_link_libraries(xenon_ui
         ${GTKSOURCEVIEW_LIBRARIES}
         ${GTKSOURCEVIEWMM_LIBRARIES}
 )
+
+if(VTE_FOUND)
+    target_compile_options(xenon_ui PRIVATE ${VTE_CFLAGS_OTHER})
+    target_link_libraries(xenon_ui PUBLIC ${VTE_LIBRARIES})
+endif()

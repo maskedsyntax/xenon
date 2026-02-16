@@ -1,6 +1,9 @@
 #include "ui/editor_widget.hpp"
 #include "core/file_manager.hpp"
 #include "features/search_engine.hpp"
+#include <algorithm>
+#include <cctype>
+#include <regex>
 
 namespace xenon::ui {
 
@@ -31,7 +34,7 @@ EditorWidget::EditorWidget()
     show_all();
 }
 
-void EditorWidget::findNext(const std::string& text, bool caseSensitive, bool /* regex */) {
+void EditorWidget::findNext(const std::string& text, bool caseSensitive, bool regex) {
     if (text.empty()) return;
 
     std::string content = source_buffer_->get_text();
@@ -39,22 +42,22 @@ void EditorWidget::findNext(const std::string& text, bool caseSensitive, bool /*
     source_buffer_->get_selection_bounds(start, end);
     int offset = end.get_offset();
 
-    auto result = xenon::features::SearchEngine::findNext(content, text, offset, caseSensitive);
+    auto result = xenon::features::SearchEngine::findNext(content, text, static_cast<size_t>(offset), caseSensitive, regex);
 
     if (result.offset == std::string::npos) {
         // Wrap around
-        result = xenon::features::SearchEngine::findNext(content, text, 0, caseSensitive);
+        result = xenon::features::SearchEngine::findNext(content, text, 0, caseSensitive, regex);
     }
 
     if (result.offset != std::string::npos) {
-        auto match_start = source_buffer_->get_iter_at_offset(result.offset);
-        auto match_end = source_buffer_->get_iter_at_offset(result.offset + result.length);
+        auto match_start = source_buffer_->get_iter_at_offset(static_cast<int>(result.offset));
+        auto match_end = source_buffer_->get_iter_at_offset(static_cast<int>(result.offset + result.length));
         source_buffer_->select_range(match_start, match_end);
         source_view_->scroll_to(match_start);
     }
 }
 
-void EditorWidget::findPrevious(const std::string& text, bool caseSensitive, bool /* regex */) {
+void EditorWidget::findPrevious(const std::string& text, bool caseSensitive, bool regex) {
     if (text.empty()) return;
 
     std::string content = source_buffer_->get_text();
@@ -62,16 +65,16 @@ void EditorWidget::findPrevious(const std::string& text, bool caseSensitive, boo
     source_buffer_->get_selection_bounds(start, end);
     int offset = start.get_offset();
 
-    auto result = xenon::features::SearchEngine::findPrevious(content, text, offset, caseSensitive);
+    auto result = xenon::features::SearchEngine::findPrevious(content, text, static_cast<size_t>(offset), caseSensitive, regex);
 
     if (result.offset == std::string::npos) {
         // Wrap around
-        result = xenon::features::SearchEngine::findPrevious(content, text, content.length(), caseSensitive);
+        result = xenon::features::SearchEngine::findPrevious(content, text, content.length(), caseSensitive, regex);
     }
 
     if (result.offset != std::string::npos) {
-        auto match_start = source_buffer_->get_iter_at_offset(result.offset);
-        auto match_end = source_buffer_->get_iter_at_offset(result.offset + result.length);
+        auto match_start = source_buffer_->get_iter_at_offset(static_cast<int>(result.offset));
+        auto match_end = source_buffer_->get_iter_at_offset(static_cast<int>(result.offset + result.length));
         source_buffer_->select_range(match_start, match_end);
         source_view_->scroll_to(match_start);
     }
@@ -80,55 +83,51 @@ void EditorWidget::findPrevious(const std::string& text, bool caseSensitive, boo
 void EditorWidget::replace(const std::string& text, const std::string& replacement, bool caseSensitive, bool regex) {
     if (text.empty()) return;
 
-    std::string content = source_buffer_->get_text();
     Gtk::TextIter start, end;
     source_buffer_->get_selection_bounds(start, end);
-    int offset = start.get_offset();
-    int length = end.get_offset() - offset;
-
-    // Check if current selection matches
-    // Note: This is simple check, assumes selection is exactly the match. 
-    // Ideally we should check if selection equals text (respecting case).
-    
-    bool match = false;
     std::string selection = source_buffer_->get_text(start, end);
-    if (caseSensitive) {
+
+    bool match = false;
+    if (regex) {
+        try {
+            auto flags = std::regex_constants::ECMAScript;
+            if (!caseSensitive) {
+                flags |= std::regex_constants::icase;
+            }
+            std::regex re(text, flags);
+            match = std::regex_match(selection, re);
+        } catch (const std::regex_error&) {
+            // Invalid regex, skip
+        }
+    } else if (caseSensitive) {
         match = (selection == text);
     } else {
-        // simple case insensitive check
-        // ... omitted for brevity, just check length and content roughly or rely on user
-        // Better:
-        std::string selLower = selection;
-        std::string textLower = text;
-        // lowercase both
-        // ...
-        match = (selection.length() == text.length()); // naive
+        // Proper case-insensitive comparison
+        if (selection.length() == text.length()) {
+            match = std::equal(selection.begin(), selection.end(), text.begin(),
+                [](unsigned char a, unsigned char b) {
+                    return std::tolower(a) == std::tolower(b);
+                });
+        }
     }
-    
-    // Better logic: If selection matches 'text' (found via search), replace it.
-    // We can use SearchEngine to verify if the selection is a match.
-    // But since we can't easily trust selection, let's just:
-    // 1. If selection matches text, replace.
-    // 2. Else, find next.
-    
-    // Simply:
-    if (selection == text) { // Exact match for now
-         source_buffer_->begin_user_action();
-         source_buffer_->erase(start, end);
-         source_buffer_->insert(start, replacement);
-         source_buffer_->end_user_action();
-         findNext(text, caseSensitive, regex);
-         return;
+
+    if (match) {
+        source_buffer_->begin_user_action();
+        source_buffer_->erase(start, end);
+        source_buffer_->insert(start, replacement);
+        source_buffer_->end_user_action();
+        findNext(text, caseSensitive, regex);
+        return;
     }
 
     findNext(text, caseSensitive, regex);
 }
 
-void EditorWidget::replaceAll(const std::string& text, const std::string& replacement, bool caseSensitive, bool /* regex */) {
+void EditorWidget::replaceAll(const std::string& text, const std::string& replacement, bool caseSensitive, bool regex) {
     if (text.empty()) return;
 
     std::string content = source_buffer_->get_text();
-    auto results = xenon::features::SearchEngine::findAll(content, text, caseSensitive);
+    auto results = xenon::features::SearchEngine::findAll(content, text, caseSensitive, regex);
     
     if (results.empty()) return;
     
