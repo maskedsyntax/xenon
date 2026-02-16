@@ -16,21 +16,24 @@ public:
     static std::vector<SearchResult> findAll(
         const std::string& text,
         const std::string& pattern,
-        bool caseSensitive = true
+        bool caseSensitive = true,
+        bool useRegex = false
     );
 
     static SearchResult findNext(
         const std::string& text,
         const std::string& pattern,
         size_t startOffset = 0,
-        bool caseSensitive = true
+        bool caseSensitive = true,
+        bool useRegex = false
     );
 
     static SearchResult findPrevious(
         const std::string& text,
         const std::string& pattern,
-        size_t startOffset,
-        bool caseSensitive = true
+        size_t startOffset = 0,
+        bool caseSensitive = true,
+        bool useRegex = false
     );
 };
 

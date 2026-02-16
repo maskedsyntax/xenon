@@ -18,6 +18,12 @@ MainWindow::MainWindow(Glib::RefPtr<Gtk::Application> app)
     createNewTab();
 
     show_all_children();
+
+    // Hide terminal after show_all_children so it starts collapsed
+    if (terminal_widget_) {
+        terminal_widget_->set_no_show_all(true);
+        terminal_widget_->hide();
+    }
 }
 
 void MainWindow::setupUI() {
@@ -49,9 +55,16 @@ void MainWindow::setupUI() {
     file_explorer_->signal_file_activated().connect(sigc::mem_fun(*this, &MainWindow::onExplorerFileActivated));
     file_explorer_->setRootDirectory(working_directory_);
 
-    // Layout
-    main_paned_.pack1(*file_explorer_, false, false); // Resize: false, Shrink: false
-    content_box_.pack_start(notebook_, true, true);
+    // Setup terminal
+    terminal_widget_ = std::make_unique<TerminalWidget>();
+    terminal_widget_->setWorkingDirectory(working_directory_);
+
+    // Layout: content_vpaned splits notebook (top) and terminal (bottom)
+    content_vpaned_.pack1(notebook_, true, true);
+    content_vpaned_.pack2(*terminal_widget_, false, true);
+
+    main_paned_.pack1(*file_explorer_, false, false);
+    content_box_.pack_start(content_vpaned_, true, true);
     main_paned_.pack2(content_box_, true, true);
     main_paned_.set_position(250);
 
@@ -140,6 +153,13 @@ void MainWindow::setupMenuBar() {
     splitVerticalItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onSplitVertical));
     splitVerticalItem->add_accelerator("activate", accel_group_, GDK_KEY_v, Gdk::MOD1_MASK, Gtk::ACCEL_VISIBLE);
     viewMenu->append(*splitVerticalItem);
+
+    viewMenu->append(*Gtk::manage(new Gtk::SeparatorMenuItem()));
+
+    auto toggleTermItem = Gtk::manage(new Gtk::MenuItem("Toggle _Terminal"));
+    toggleTermItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onToggleTerminal));
+    toggleTermItem->add_accelerator("activate", accel_group_, GDK_KEY_grave, Gdk::CONTROL_MASK, Gtk::ACCEL_VISIBLE);
+    viewMenu->append(*toggleTermItem);
 
     viewMenu->append(*Gtk::manage(new Gtk::SeparatorMenuItem()));
 
@@ -281,6 +301,9 @@ void MainWindow::onOpenFolder() {
         working_directory_ = folder;
         quick_open_dialog_->setWorkingDirectory(folder);
         file_explorer_->setRootDirectory(folder);
+        if (terminal_widget_) {
+            terminal_widget_->setWorkingDirectory(folder);
+        }
     }
 }
 
@@ -480,6 +503,12 @@ void MainWindow::onSplitVertical() {
     auto split_pane = getCurrentSplitPane();
     if (split_pane) {
         split_pane->splitVertical();
+    }
+}
+
+void MainWindow::onToggleTerminal() {
+    if (terminal_widget_) {
+        terminal_widget_->toggle();
     }
 }
 
