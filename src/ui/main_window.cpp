@@ -79,95 +79,95 @@ void MainWindow::setupMenuBar() {
     auto fileMenu = Gtk::manage(new Gtk::Menu());
     fileMenu->set_accel_group(accel_group_);
 
-    auto newItem = Gtk::manage(new Gtk::MenuItem("_New"));
+    auto newItem = Gtk::manage(new Gtk::MenuItem("_New", true));
     newItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onFileNew));
     newItem->add_accelerator("activate", accel_group_, GDK_KEY_n, Gdk::CONTROL_MASK, Gtk::ACCEL_VISIBLE);
     fileMenu->append(*newItem);
 
-    auto openItem = Gtk::manage(new Gtk::MenuItem("_Open File"));
+    auto openItem = Gtk::manage(new Gtk::MenuItem("_Open File", true));
     openItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onFileOpen));
     openItem->add_accelerator("activate", accel_group_, GDK_KEY_o, Gdk::CONTROL_MASK, Gtk::ACCEL_VISIBLE);
     fileMenu->append(*openItem);
 
-    auto openFolderItem = Gtk::manage(new Gtk::MenuItem("Open _Folder"));
+    auto openFolderItem = Gtk::manage(new Gtk::MenuItem("Open _Folder", true));
     openFolderItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onOpenFolder));
     fileMenu->append(*openFolderItem);
 
-    auto saveItem = Gtk::manage(new Gtk::MenuItem("_Save"));
+    auto saveItem = Gtk::manage(new Gtk::MenuItem("_Save", true));
     saveItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onFileSave));
     saveItem->add_accelerator("activate", accel_group_, GDK_KEY_s, Gdk::CONTROL_MASK, Gtk::ACCEL_VISIBLE);
     fileMenu->append(*saveItem);
 
-    auto saveAsItem = Gtk::manage(new Gtk::MenuItem("Save _As"));
+    auto saveAsItem = Gtk::manage(new Gtk::MenuItem("Save _As", true));
     saveAsItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onFileSaveAs));
     fileMenu->append(*saveAsItem);
     
-    auto closeTabItem = Gtk::manage(new Gtk::MenuItem("Close _Tab"));
+    auto closeTabItem = Gtk::manage(new Gtk::MenuItem("Close _Tab", true));
     closeTabItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onFileCloseTab));
     closeTabItem->add_accelerator("activate", accel_group_, GDK_KEY_w, Gdk::CONTROL_MASK, Gtk::ACCEL_VISIBLE);
     fileMenu->append(*closeTabItem);
 
     fileMenu->append(*Gtk::manage(new Gtk::SeparatorMenuItem()));
 
-    auto quitItem = Gtk::manage(new Gtk::MenuItem("_Quit"));
+    auto quitItem = Gtk::manage(new Gtk::MenuItem("_Quit", true));
     quitItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onFileQuit));
     fileMenu->append(*quitItem);
 
-    auto fileMenuitem = Gtk::manage(new Gtk::MenuItem("_File"));
+    auto fileMenuitem = Gtk::manage(new Gtk::MenuItem("_File", true));
     fileMenuitem->set_submenu(*fileMenu);
 
     // Edit menu
     auto editMenu = Gtk::manage(new Gtk::Menu());
     editMenu->set_accel_group(accel_group_);
 
-    auto quickOpenItem = Gtk::manage(new Gtk::MenuItem("Quick _Open"));
+    auto quickOpenItem = Gtk::manage(new Gtk::MenuItem("Quick _Open", true));
     quickOpenItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onQuickOpen));
     quickOpenItem->add_accelerator("activate", accel_group_, GDK_KEY_p, Gdk::CONTROL_MASK, Gtk::ACCEL_VISIBLE);
     editMenu->append(*quickOpenItem);
 
     editMenu->append(*Gtk::manage(new Gtk::SeparatorMenuItem()));
 
-    auto findItem = Gtk::manage(new Gtk::MenuItem("_Find"));
+    auto findItem = Gtk::manage(new Gtk::MenuItem("_Find", true));
     findItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onEditFind));
     findItem->add_accelerator("activate", accel_group_, GDK_KEY_f, Gdk::CONTROL_MASK, Gtk::ACCEL_VISIBLE);
     editMenu->append(*findItem);
 
-    auto findReplaceItem = Gtk::manage(new Gtk::MenuItem("Find and _Replace"));
+    auto findReplaceItem = Gtk::manage(new Gtk::MenuItem("Find and _Replace", true));
     findReplaceItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onEditFindReplace));
     findReplaceItem->add_accelerator("activate", accel_group_, GDK_KEY_h, Gdk::CONTROL_MASK, Gtk::ACCEL_VISIBLE);
     editMenu->append(*findReplaceItem);
 
-    auto editMenuitem = Gtk::manage(new Gtk::MenuItem("_Edit"));
+    auto editMenuitem = Gtk::manage(new Gtk::MenuItem("_Edit", true));
     editMenuitem->set_submenu(*editMenu);
 
     // View menu
     auto viewMenu = Gtk::manage(new Gtk::Menu());
     viewMenu->set_accel_group(accel_group_);
 
-    auto splitHorizontalItem = Gtk::manage(new Gtk::MenuItem("Split _Horizontally"));
+    auto splitHorizontalItem = Gtk::manage(new Gtk::MenuItem("Split _Horizontally", true));
     splitHorizontalItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onSplitHorizontal));
     splitHorizontalItem->add_accelerator("activate", accel_group_, GDK_KEY_h, Gdk::MOD1_MASK, Gtk::ACCEL_VISIBLE);
     viewMenu->append(*splitHorizontalItem);
 
-    auto splitVerticalItem = Gtk::manage(new Gtk::MenuItem("Split _Vertically"));
+    auto splitVerticalItem = Gtk::manage(new Gtk::MenuItem("Split _Vertically", true));
     splitVerticalItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onSplitVertical));
     splitVerticalItem->add_accelerator("activate", accel_group_, GDK_KEY_v, Gdk::MOD1_MASK, Gtk::ACCEL_VISIBLE);
     viewMenu->append(*splitVerticalItem);
 
     viewMenu->append(*Gtk::manage(new Gtk::SeparatorMenuItem()));
 
-    auto toggleTermItem = Gtk::manage(new Gtk::MenuItem("Toggle _Terminal"));
+    auto toggleTermItem = Gtk::manage(new Gtk::MenuItem("Toggle _Terminal", true));
     toggleTermItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onToggleTerminal));
     toggleTermItem->add_accelerator("activate", accel_group_, GDK_KEY_grave, Gdk::CONTROL_MASK, Gtk::ACCEL_VISIBLE);
     viewMenu->append(*toggleTermItem);
 
     viewMenu->append(*Gtk::manage(new Gtk::SeparatorMenuItem()));
 
-    auto selectLangItem = Gtk::manage(new Gtk::MenuItem("Set _Language"));
+    auto selectLangItem = Gtk::manage(new Gtk::MenuItem("Set _Language", true));
     selectLangItem->signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onSelectLanguage));
     viewMenu->append(*selectLangItem);
 
-    auto viewMenuitem = Gtk::manage(new Gtk::MenuItem("_View"));
+    auto viewMenuitem = Gtk::manage(new Gtk::MenuItem("_View", true));
     viewMenuitem->set_submenu(*viewMenu);
 
     menubar_.append(*fileMenuitem);
