@@ -2,6 +2,7 @@ add_subdirectory(core)
 add_subdirectory(features)
 add_subdirectory(services)
 add_subdirectory(lsp)
+add_subdirectory(git)
 add_subdirectory(ui)
 
 add_executable(xenon main.cpp)
@@ -13,6 +14,7 @@ target_link_libraries(xenon
         xenon_features
         xenon_core
         xenon_lsp
+        xenon_git
         ${GTK_LIBRARIES}
         ${GTKMM_LIBRARIES}
 )

@@ -4,6 +4,7 @@ namespace xenon::ui {
 
 StatusBar::StatusBar()
     : Gtk::Box(Gtk::ORIENTATION_HORIZONTAL, 0),
+      sep0_(Gtk::ORIENTATION_VERTICAL),
       sep1_(Gtk::ORIENTATION_VERTICAL),
       sep2_(Gtk::ORIENTATION_VERTICAL),
       sep3_(Gtk::ORIENTATION_VERTICAL),
@@ -13,17 +14,29 @@ StatusBar::StatusBar()
     set_margin_top(0);
     set_margin_bottom(0);
 
-    // Message label takes all remaining space on the left
+    // Left side: message
     message_label_.set_text("");
     message_label_.set_halign(Gtk::ALIGN_START);
     message_label_.set_margin_start(8);
     message_label_.set_margin_end(8);
     message_label_.get_style_context()->add_class("statusbar-message");
-    pack_start(message_label_, true, true);
+    pack_start(message_label_, false, false);
+
+    // Git branch (left side, after message)
+    sep0_.set_margin_top(4);
+    sep0_.set_margin_bottom(4);
+    pack_start(sep0_, false, false);
+    git_label_.set_margin_start(12);
+    git_label_.set_margin_end(12);
+    git_label_.get_style_context()->add_class("statusbar-item");
+    pack_start(git_label_, false, false);
 
     // Right-side info labels
-    sep1_.set_margin_top(4);
-    sep1_.set_margin_bottom(4);
+    for (auto* sep : {&sep1_, &sep2_, &sep3_, &sep4_}) {
+        sep->set_margin_top(4);
+        sep->set_margin_bottom(4);
+    }
+
     pack_end(line_ending_label_, false, false);
     pack_end(sep4_, false, false);
     pack_end(encoding_label_, false, false);
@@ -33,20 +46,20 @@ StatusBar::StatusBar()
     pack_end(position_label_, false, false);
     pack_end(sep1_, false, false);
 
-    // Style the right labels
     for (auto* lbl : {&position_label_, &language_label_, &encoding_label_, &line_ending_label_}) {
         lbl->set_margin_start(12);
         lbl->set_margin_end(12);
         lbl->get_style_context()->add_class("statusbar-item");
     }
 
-    // Set initial values
     setCursorPosition(1, 1);
     setLanguage("Plain Text");
     setEncoding("UTF-8");
     setLineEnding("LF");
 
     show_all();
+    git_label_.hide();
+    sep0_.hide();
 }
 
 void StatusBar::setCursorPosition(int line, int col) {
@@ -71,6 +84,17 @@ void StatusBar::setMessage(const std::string& message) {
 
 void StatusBar::clearMessage() {
     message_label_.set_text("");
+}
+
+void StatusBar::setGitBranch(const std::string& branch) {
+    if (branch.empty()) {
+        git_label_.hide();
+        sep0_.hide();
+    } else {
+        git_label_.set_text("\uf126 " + branch);  // branch icon (nerd font) or plain
+        git_label_.show();
+        sep0_.show();
+    }
 }
 
 } // namespace xenon::ui

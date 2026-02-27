@@ -7,6 +7,7 @@
 #include <vector>
 #include "core/document.hpp"
 #include "lsp/lsp_client.hpp"
+#include "git/git_manager.hpp"
 
 namespace xenon::ui {
 
@@ -43,6 +44,10 @@ public:
     void triggerCompletion();
     void gotoDefinition();
 
+    // Git diff gutter
+    void setGitManager(std::shared_ptr<xenon::git::GitManager> gm);
+    void refreshGitDiff();
+
     // Signals
     sigc::signal<void, int, int>& signal_cursor_moved() { return signal_cursor_moved_; }
     sigc::signal<void>& signal_content_changed() { return signal_content_changed_; }
@@ -65,6 +70,12 @@ private:
     Glib::RefPtr<Gtk::TextTag> error_tag_;
     Glib::RefPtr<Gtk::TextTag> warning_tag_;
 
+    // Git
+    std::shared_ptr<xenon::git::GitManager> git_manager_;
+    Glib::RefPtr<Gsv::MarkAttributes> git_added_attrs_;
+    Glib::RefPtr<Gsv::MarkAttributes> git_modified_attrs_;
+    Glib::RefPtr<Gsv::MarkAttributes> git_deleted_attrs_;
+
     sigc::signal<void, int, int> signal_cursor_moved_;
     sigc::signal<void> signal_content_changed_;
 
@@ -74,6 +85,7 @@ private:
 
     // LSP helpers
     void setupDiagnosticTags();
+    void setupGitMarkAttributes();
     void applyDiagnostics(const std::vector<xenon::lsp::Diagnostic>& diags);
     void showCompletionPopup(const std::vector<xenon::lsp::CompletionItem>& items);
     void hideCompletionPopup();

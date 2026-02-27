@@ -18,6 +18,12 @@ MainWindow::MainWindow(Glib::RefPtr<Gtk::Application> app)
     // Apply dark theme
     ThemeManager::instance().applyDarkTheme(get_screen());
 
+    // Initialize git manager
+    git_manager_ = std::make_shared<xenon::git::GitManager>();
+    if (git_manager_->setWorkingDirectory(working_directory_)) {
+        // Will show branch in status bar after UI is set up
+    }
+
     setupUI();
     setupMenuBar();
     createNewTab();
@@ -28,6 +34,11 @@ MainWindow::MainWindow(Glib::RefPtr<Gtk::Application> app)
     if (terminal_widget_) {
         terminal_widget_->set_no_show_all(true);
         terminal_widget_->hide();
+    }
+
+    // Update git branch in status bar
+    if (git_manager_ && git_manager_->isGitRepo()) {
+        status_bar_.setGitBranch(git_manager_->currentBranch());
     }
 }
 
@@ -240,12 +251,23 @@ void MainWindow::connectEditorSignals(EditorWidget* editor) {
     editor->signal_cursor_moved().connect([this](int line, int col) {
         status_bar_.setCursorPosition(line, col);
     });
-    editor->signal_content_changed().connect([this]() {});
+    editor->signal_content_changed().connect([this]() {
+        // Mark tab as modified if the active editor was changed
+        auto* active = getActiveEditor();
+        if (active && active->isModified()) {
+            markTabModified(true);
+        }
+    });
 
     // Attach LSP client if a suitable server is available
     auto lsp = getLspClientForEditor(editor);
     if (lsp) {
         editor->setLspClient(lsp);
+    }
+
+    // Attach git manager for diff gutter marks
+    if (git_manager_ && git_manager_->isGitRepo()) {
+        editor->setGitManager(git_manager_);
     }
 }
 
@@ -331,6 +353,28 @@ void MainWindow::updateStatusBar() {
     status_bar_.setLineEnding(editor->getLineEnding());
 }
 
+void MainWindow::markTabModified(bool modified) {
+    int pageNum = notebook_.get_current_page();
+    if (pageNum < 0) return;
+    auto* page = notebook_.get_nth_page(pageNum);
+    if (!page) return;
+    auto* tabWidget = notebook_.get_tab_label(*page);
+    if (auto* box = dynamic_cast<Gtk::Container*>(tabWidget)) {
+        auto children = box->get_children();
+        if (!children.empty()) {
+            if (auto* label = dynamic_cast<Gtk::Label*>(children[0])) {
+                std::string text = label->get_text();
+                bool hasPrefix = !text.empty() && text[0] == '\u25CF';  // ● U+25CF
+                if (modified && !hasPrefix) {
+                    label->set_text("\u25CF " + text);
+                } else if (!modified && hasPrefix) {
+                    label->set_text(text.substr(3));  // Remove "● " (3 bytes in UTF-8)
+                }
+            }
+        }
+    }
+}
+
 void MainWindow::updateTabLabel(const std::string& title) {
     int pageNum = notebook_.get_current_page();
     if (pageNum < 0) return;
@@ -395,6 +439,13 @@ void MainWindow::onOpenFolder() {
         if (terminal_widget_) {
             terminal_widget_->setWorkingDirectory(folder);
         }
+        if (git_manager_) {
+            if (git_manager_->setWorkingDirectory(folder)) {
+                status_bar_.setGitBranch(git_manager_->currentBranch());
+            } else {
+                status_bar_.setGitBranch("");
+            }
+        }
     }
 }
 
@@ -405,11 +456,13 @@ void MainWindow::onFileSave() {
             onFileSaveAs();
         } else {
             editor->saveFile();
+            markTabModified(false);
             status_bar_.setMessage("Saved");
-            // Clear message after 2 seconds
             Glib::signal_timeout().connect_once([this]() {
                 status_bar_.clearMessage();
             }, 2000);
+            // Refresh git diff marks after save
+            if (git_manager_) editor->refreshGitDiff();
         }
     }
 }

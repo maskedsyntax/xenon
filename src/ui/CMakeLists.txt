@@ -22,6 +22,7 @@ target_link_libraries(xenon_ui
     PUBLIC
         xenon_core
         xenon_lsp
+        xenon_git
         ${GTK_LIBRARIES}
         ${GTKMM_LIBRARIES}
         ${GTKSOURCEVIEW_LIBRARIES}

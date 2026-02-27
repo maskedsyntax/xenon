@@ -1,6 +1,7 @@
 #include "ui/editor_widget.hpp"
 #include "core/file_manager.hpp"
 #include "features/search_engine.hpp"
+#include "git/git_manager.hpp"
 #include <algorithm>
 #include <cctype>
 #include <regex>
@@ -64,6 +65,8 @@ EditorWidget::EditorWidget()
             lsp_client_->didChange("file://" + file_path_, getContent(), doc_version_);
         }
     });
+
+    setupGitMarkAttributes();
 
     show_all();
 }
@@ -350,6 +353,71 @@ std::string EditorWidget::currentWordPrefix() const {
         }
     }
     return source_buffer_->get_text(word_start, cursor).raw();
+}
+
+// ---- Git diff gutter ----
+
+void EditorWidget::setupGitMarkAttributes() {
+    // Added lines: green left bar
+    git_added_attrs_ = Gsv::MarkAttributes::create();
+    Gdk::RGBA green;
+    green.set_rgba(0.4, 0.8, 0.4, 1.0);
+    git_added_attrs_->set_background(green);
+    source_view_->set_mark_attributes("git-added", git_added_attrs_, 0);
+
+    // Modified lines: orange left bar
+    git_modified_attrs_ = Gsv::MarkAttributes::create();
+    Gdk::RGBA orange;
+    orange.set_rgba(0.9, 0.6, 0.1, 1.0);
+    git_modified_attrs_->set_background(orange);
+    source_view_->set_mark_attributes("git-modified", git_modified_attrs_, 0);
+
+    // Deleted lines: red triangle marker
+    git_deleted_attrs_ = Gsv::MarkAttributes::create();
+    Gdk::RGBA red;
+    red.set_rgba(0.9, 0.2, 0.2, 1.0);
+    git_deleted_attrs_->set_background(red);
+    source_view_->set_mark_attributes("git-deleted", git_deleted_attrs_, 0);
+
+    source_view_->set_show_line_marks(true);
+}
+
+void EditorWidget::setGitManager(std::shared_ptr<xenon::git::GitManager> gm) {
+    git_manager_ = std::move(gm);
+    refreshGitDiff();
+}
+
+void EditorWidget::refreshGitDiff() {
+    if (!git_manager_ || !git_manager_->isGitRepo() || file_path_.empty()) return;
+
+    // Clear existing git marks
+    auto begin = source_buffer_->begin();
+    auto end = source_buffer_->end();
+    source_buffer_->remove_source_marks(begin, end, "git-added");
+    source_buffer_->remove_source_marks(begin, end, "git-modified");
+    source_buffer_->remove_source_marks(begin, end, "git-deleted");
+
+    auto hunks = git_manager_->getFileDiff(file_path_, getContent());
+    for (const auto& hunk : hunks) {
+        std::string cat;
+        switch (hunk.type) {
+            case xenon::git::DiffLineType::Added:    cat = "git-added";    break;
+            case xenon::git::DiffLineType::Modified: cat = "git-modified"; break;
+            case xenon::git::DiffLineType::Deleted:  cat = "git-deleted";  break;
+            default: continue;
+        }
+
+        int max_line = source_buffer_->get_line_count() - 1;
+        int line_start = std::min(hunk.start_line, max_line);
+        int line_count = (hunk.type == xenon::git::DiffLineType::Deleted)
+                            ? 1 : std::max(1, hunk.count);
+
+        for (int i = 0; i < line_count; ++i) {
+            int ln = std::min(line_start + i, max_line);
+            auto iter = source_buffer_->get_iter_at_line(ln);
+            source_buffer_->create_source_mark("", cat, iter);
+        }
+    }
 }
 
 void EditorWidget::toggleMinimap() {

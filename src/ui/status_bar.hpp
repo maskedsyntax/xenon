@@ -16,9 +16,12 @@ public:
     void setLineEnding(const std::string& lineEnding);
     void setMessage(const std::string& message);
     void clearMessage();
+    void setGitBranch(const std::string& branch);
 
 private:
     Gtk::Label message_label_;
+    Gtk::Label git_label_;
+    Gtk::Separator sep0_;
     Gtk::Separator sep1_;
     Gtk::Label position_label_;
     Gtk::Separator sep2_;

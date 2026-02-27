@@ -11,6 +11,7 @@
 #include "ui/status_bar.hpp"
 #include "ui/command_palette.hpp"
 #include "lsp/lsp_client.hpp"
+#include "git/git_manager.hpp"
 
 namespace xenon::ui {
 
@@ -42,6 +43,9 @@ private:
     // LSP clients keyed by language server command (e.g. "clangd")
     std::unordered_map<std::string, std::shared_ptr<xenon::lsp::LspClient>> lsp_clients_;
 
+    // Git
+    std::shared_ptr<xenon::git::GitManager> git_manager_;
+
     std::shared_ptr<xenon::lsp::LspClient> getLspClientForEditor(EditorWidget* editor);
     void startLspServer(const std::string& command, const std::string& langId);
 
@@ -56,6 +60,7 @@ private:
     void updateStatusBar();
     void connectEditorSignals(EditorWidget* editor);
     void updateTabLabel(const std::string& title);
+    void markTabModified(bool modified);
 
     void onFileNew();
     void onFileOpen();
