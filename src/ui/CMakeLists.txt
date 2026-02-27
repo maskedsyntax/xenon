@@ -6,6 +6,9 @@ add_library(xenon_ui STATIC
     search_replace_dialog.cpp
     file_explorer.cpp
     terminal_widget.cpp
+    status_bar.cpp
+    theme_manager.cpp
+    command_palette.cpp
 )
 
 target_include_directories(xenon_ui

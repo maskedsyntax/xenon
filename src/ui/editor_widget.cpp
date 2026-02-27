@@ -5,13 +5,19 @@
 #include <cctype>
 #include <regex>
 
+#ifdef HAVE_GTKSOURCEVIEW
+#include <gtksourceview/gtksource.h>
+#endif
+
 namespace xenon::ui {
 
 EditorWidget::EditorWidget()
-    : document_(std::make_unique<xenon::core::Document>()) {
-    set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC);
+    : Gtk::Box(Gtk::ORIENTATION_HORIZONTAL),
+      document_(std::make_unique<xenon::core::Document>()) {
 
     source_buffer_ = Gsv::Buffer::create();
+    source_buffer_->set_highlight_matching_brackets(true);
+
     auto view = Gtk::manage(new Gsv::View(source_buffer_));
     source_view_ = view;
 
@@ -19,19 +25,103 @@ EditorWidget::EditorWidget()
     view->set_tab_width(4);
     view->set_insert_spaces_instead_of_tabs(true);
     view->set_auto_indent(true);
+    view->set_highlight_current_line(true);
+    view->set_smart_home_end(Gsv::SMART_HOME_END_BEFORE);
+    view->set_show_right_margin(true);
+    view->set_right_margin_position(100);
 
     Pango::FontDescription font_desc("Monospace 11");
     view->override_font(font_desc);
 
-    // Set default color scheme
+    // Apply dark style scheme
     auto scheme_manager = Gsv::StyleSchemeManager::get_default();
     auto scheme = scheme_manager->get_scheme("oblivion");
+    if (!scheme) {
+        scheme = scheme_manager->get_scheme("classic");
+    }
     if (scheme) {
         source_buffer_->set_style_scheme(scheme);
     }
 
-    add(*view);
+    // Scrolled window for the main editor
+    scroll_window_ = Gtk::manage(new Gtk::ScrolledWindow());
+    scroll_window_->set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC);
+    scroll_window_->add(*view);
+
+    pack_start(*scroll_window_, true, true);
+
+    // Connect cursor-moved signal
+    source_buffer_->signal_mark_set().connect(
+        sigc::mem_fun(*this, &EditorWidget::onCursorMoved));
+
+    // Connect content changed signal
+    source_buffer_->signal_changed().connect([this]() {
+        signal_content_changed_.emit();
+    });
+
     show_all();
+}
+
+void EditorWidget::onCursorMoved(const Gtk::TextIter& /*iter*/,
+                                  const Glib::RefPtr<Gtk::TextMark>& mark) {
+    if (mark->get_name() == "insert") {
+        auto cursor = source_buffer_->get_iter_at_mark(source_buffer_->get_insert());
+        int line = cursor.get_line() + 1;
+        int col = cursor.get_line_offset() + 1;
+        signal_cursor_moved_.emit(line, col);
+    }
+}
+
+std::pair<int, int> EditorWidget::getCursorPosition() const {
+    auto cursor = source_buffer_->get_iter_at_mark(source_buffer_->get_insert());
+    return {cursor.get_line() + 1, cursor.get_line_offset() + 1};
+}
+
+std::string EditorWidget::getLanguageName() const {
+    auto lang = source_buffer_->get_language();
+    if (lang) {
+        return lang->get_name().raw();
+    }
+    return "Plain Text";
+}
+
+std::string EditorWidget::getEncoding() const {
+    if (document_) {
+        return document_->encoding();
+    }
+    return "UTF-8";
+}
+
+std::string EditorWidget::getLineEnding() const {
+    if (document_) {
+        auto le = document_->lineEnding();
+        if (le == "CRLF") return "CRLF";
+        if (le == "CR") return "CR";
+        return "LF";
+    }
+    return "LF";
+}
+
+void EditorWidget::toggleMinimap() {
+#ifdef HAVE_GTKSOURCEVIEW
+    if (!minimap_widget_) {
+        // GtkSourceMap is available from GtkSourceView 3.18
+        GtkWidget* map = gtk_source_map_new();
+        gtk_source_map_set_view(GTK_SOURCE_MAP(map), GTK_SOURCE_VIEW(source_view_->gobj()));
+        gtk_widget_set_size_request(map, 110, -1);
+
+        minimap_widget_ = Glib::wrap(map);
+        pack_start(*minimap_widget_, false, false);
+        minimap_widget_->show();
+        minimap_visible_ = true;
+    } else if (minimap_visible_) {
+        minimap_widget_->hide();
+        minimap_visible_ = false;
+    } else {
+        minimap_widget_->show();
+        minimap_visible_ = true;
+    }
+#endif
 }
 
 void EditorWidget::findNext(const std::string& text, bool caseSensitive, bool regex) {
@@ -102,7 +192,6 @@ void EditorWidget::replace(const std::string& text, const std::string& replaceme
     } else if (caseSensitive) {
         match = (selection == text);
     } else {
-        // Proper case-insensitive comparison
         if (selection.length() == text.length()) {
             match = std::equal(selection.begin(), selection.end(), text.begin(),
                 [](unsigned char a, unsigned char b) {
@@ -128,19 +217,19 @@ void EditorWidget::replaceAll(const std::string& text, const std::string& replac
 
     std::string content = source_buffer_->get_text();
     auto results = xenon::features::SearchEngine::findAll(content, text, caseSensitive, regex);
-    
+
     if (results.empty()) return;
-    
+
     source_buffer_->begin_user_action();
-    
+
     // Iterate backwards to keep offsets valid
     for (auto it = results.rbegin(); it != results.rend(); ++it) {
-        auto start = source_buffer_->get_iter_at_offset(it->offset);
-        auto end = source_buffer_->get_iter_at_offset(it->offset + it->length);
-        source_buffer_->erase(start, end);
-        source_buffer_->insert(start, replacement);
+        auto s = source_buffer_->get_iter_at_offset(static_cast<int>(it->offset));
+        auto e = source_buffer_->get_iter_at_offset(static_cast<int>(it->offset + it->length));
+        source_buffer_->erase(s, e);
+        source_buffer_->insert(s, replacement);
     }
-    
+
     source_buffer_->end_user_action();
 }
 
@@ -179,11 +268,11 @@ void EditorWidget::saveFile() {
 }
 
 bool EditorWidget::isModified() const {
-    return document_->isModified();
+    return source_buffer_->get_modified();
 }
 
 void EditorWidget::onDocumentChanged() {
-    // Update sync between GTK buffer and core Document
+    // Sync between GTK buffer and core Document
 }
 
 void EditorWidget::applyLanguageHighlighting() {
@@ -191,7 +280,6 @@ void EditorWidget::applyLanguageHighlighting() {
     Glib::RefPtr<Gsv::Language> language;
 
     if (!file_path_.empty()) {
-        // Guess language from filename
         language = language_manager->guess_language(file_path_, "");
     }
 
@@ -206,7 +294,7 @@ void EditorWidget::applyLanguageHighlighting() {
 void EditorWidget::setLanguage(const std::string& langId) {
     auto language_manager = Gsv::LanguageManager::get_default();
     auto language = language_manager->get_language(langId);
-    
+
     if (source_buffer_) {
         source_buffer_->set_highlight_syntax(true);
         if (language) {
