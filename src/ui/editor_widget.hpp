@@ -1,6 +1,7 @@
 #pragma once
 
 #include <gtkmm.h>
+#include <giomm.h>
 #include <gtksourceviewmm.h>
 #include <memory>
 #include <string>
@@ -14,6 +15,7 @@ namespace xenon::ui {
 class EditorWidget : public Gtk::Box {
 public:
     EditorWidget();
+    void setupInfoBar();
     virtual ~EditorWidget() = default;
 
     void setContent(const std::string& content);
@@ -48,6 +50,10 @@ public:
     void setGitManager(std::shared_ptr<xenon::git::GitManager> gm);
     void refreshGitDiff();
 
+    // File watcher
+    void startWatchingFile();
+    void stopWatchingFile();
+
     // Signals
     sigc::signal<void, int, int>& signal_cursor_moved() { return signal_cursor_moved_; }
     sigc::signal<void>& signal_content_changed() { return signal_content_changed_; }
@@ -72,6 +78,16 @@ private:
 
     // Git
     std::shared_ptr<xenon::git::GitManager> git_manager_;
+
+    // File watcher
+    Glib::RefPtr<Gio::FileMonitor> file_monitor_;
+    Gtk::InfoBar* info_bar_ = nullptr;
+    Gtk::Label* info_label_ = nullptr;
+    bool external_change_pending_ = false;
+
+    void onFileChanged(const Glib::RefPtr<Gio::File>& file,
+                       const Glib::RefPtr<Gio::File>& other,
+                       Gio::FileMonitorEvent event);
     Glib::RefPtr<Gsv::MarkAttributes> git_added_attrs_;
     Glib::RefPtr<Gsv::MarkAttributes> git_modified_attrs_;
     Glib::RefPtr<Gsv::MarkAttributes> git_deleted_attrs_;

@@ -10,6 +10,7 @@
 #include "ui/terminal_widget.hpp"
 #include "ui/status_bar.hpp"
 #include "ui/command_palette.hpp"
+#include "ui/search_panel.hpp"
 #include "lsp/lsp_client.hpp"
 #include "git/git_manager.hpp"
 
@@ -38,6 +39,8 @@ private:
     std::unique_ptr<FileExplorer> file_explorer_;
     std::unique_ptr<TerminalWidget> terminal_widget_;
     std::unique_ptr<CommandPalette> command_palette_;
+    std::unique_ptr<SearchPanel> search_panel_;
+    Gtk::Notebook sidebar_notebook_;   // File explorer + Search panel tabs
     std::string working_directory_;
 
     // LSP clients keyed by language server command (e.g. "clangd")
@@ -83,9 +86,11 @@ private:
     void onToggleTerminal();
     void onToggleMinimap();
     void onToggleSidebar();
+    void onGlobalSearch();
     void onExplorerFileActivated(const std::string& path);
     void onGotoDefinition();
     void onTriggerCompletion();
+    void openFileAtLine(const std::string& path, int line, int col);
 };
 
 } // namespace xenon::ui

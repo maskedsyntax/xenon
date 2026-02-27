@@ -9,6 +9,7 @@ add_library(xenon_ui STATIC
     status_bar.cpp
     theme_manager.cpp
     command_palette.cpp
+    search_panel.cpp
 )
 
 target_include_directories(xenon_ui

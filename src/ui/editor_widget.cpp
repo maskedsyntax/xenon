@@ -16,7 +16,7 @@ namespace fs = std::filesystem;
 namespace xenon::ui {
 
 EditorWidget::EditorWidget()
-    : Gtk::Box(Gtk::ORIENTATION_HORIZONTAL),
+    : Gtk::Box(Gtk::ORIENTATION_VERTICAL),
       document_(std::make_unique<xenon::core::Document>()) {
 
     source_buffer_ = Gsv::Buffer::create();
@@ -46,11 +46,16 @@ EditorWidget::EditorWidget()
     // Setup tags for diagnostics
     setupDiagnosticTags();
 
-    // Scrolled window for the editor
+    // Info bar for external-change notifications (hidden initially)
+    setupInfoBar();
+
+    // Scrolled window for the editor (horizontal minimap goes alongside)
+    auto* editor_row = Gtk::manage(new Gtk::Box(Gtk::ORIENTATION_HORIZONTAL));
     scroll_window_ = Gtk::manage(new Gtk::ScrolledWindow());
     scroll_window_->set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC);
     scroll_window_->add(*view);
-    pack_start(*scroll_window_, true, true);
+    editor_row->pack_start(*scroll_window_, true, true);
+    pack_start(*editor_row, true, true);
 
     // Connect cursor-moved signal
     source_buffer_->signal_mark_set().connect(
@@ -69,6 +74,67 @@ EditorWidget::EditorWidget()
     setupGitMarkAttributes();
 
     show_all();
+}
+
+void EditorWidget::setupInfoBar() {
+    auto* bar = Gtk::manage(new Gtk::InfoBar());
+    info_bar_ = bar;
+    bar->set_message_type(Gtk::MESSAGE_WARNING);
+    bar->set_no_show_all(true);
+
+    auto* label = Gtk::manage(new Gtk::Label("File changed externally."));
+    info_label_ = label;
+    auto* content_area = dynamic_cast<Gtk::Box*>(bar->get_content_area());
+    if (content_area) content_area->pack_start(*label, false, false);
+
+    bar->add_button("Reload", Gtk::RESPONSE_YES);
+    bar->add_button("Dismiss", Gtk::RESPONSE_NO);
+    bar->signal_response().connect([this](int resp) {
+        info_bar_->hide();
+        if (resp == Gtk::RESPONSE_YES && !file_path_.empty()) {
+            try {
+                std::string content = xenon::core::FileManager::readFile(file_path_);
+                setContent(content);
+            } catch (...) {}
+        }
+        external_change_pending_ = false;
+    });
+
+    pack_start(*bar, false, false);
+    reorder_child(*bar, 0);  // Put it at the top
+}
+
+void EditorWidget::startWatchingFile() {
+    stopWatchingFile();
+    if (file_path_.empty()) return;
+
+    auto gio_file = Gio::File::create_for_path(file_path_);
+    try {
+        file_monitor_ = gio_file->monitor_file(Gio::FILE_MONITOR_NONE);
+        file_monitor_->signal_changed().connect(
+            sigc::mem_fun(*this, &EditorWidget::onFileChanged));
+    } catch (...) {}
+}
+
+void EditorWidget::stopWatchingFile() {
+    if (file_monitor_) {
+        file_monitor_->cancel();
+        file_monitor_.reset();
+    }
+}
+
+void EditorWidget::onFileChanged(const Glib::RefPtr<Gio::File>& /*file*/,
+                                  const Glib::RefPtr<Gio::File>& /*other*/,
+                                  Gio::FileMonitorEvent event) {
+    if (event == Gio::FILE_MONITOR_EVENT_CHANGED ||
+        event == Gio::FILE_MONITOR_EVENT_CREATED) {
+        if (!external_change_pending_ && !isModified()) {
+            external_change_pending_ = true;
+            if (info_bar_) {
+                info_bar_->show();
+            }
+        }
+    }
 }
 
 void EditorWidget::setupDiagnosticTags() {
@@ -428,7 +494,11 @@ void EditorWidget::toggleMinimap() {
         gtk_widget_set_size_request(map, 110, -1);
 
         minimap_widget_ = Glib::wrap(map);
-        pack_start(*minimap_widget_, false, false);
+        // Add to the editor_row box (parent of scroll_window_)
+        auto* parent = dynamic_cast<Gtk::Box*>(scroll_window_->get_parent());
+        if (parent) {
+            parent->pack_start(*minimap_widget_, false, false);
+        }
         minimap_widget_->show();
         minimap_visible_ = true;
     } else if (minimap_visible_) {
@@ -551,6 +621,9 @@ void EditorWidget::replaceAll(const std::string& text, const std::string& replac
 // ---- Content / file management ----
 
 void EditorWidget::setFilePath(const std::string& path) {
+    // Stop watching old file
+    stopWatchingFile();
+
     // If LSP was tracking the old file, close it
     if (lsp_client_ && !file_path_.empty()) {
         lsp_client_->didClose("file://" + file_path_);
@@ -565,6 +638,9 @@ void EditorWidget::setFilePath(const std::string& path) {
                               languageIdFromPath(file_path_),
                               getContent(), doc_version_);
     }
+
+    // Start watching new file
+    startWatchingFile();
 }
 
 void EditorWidget::setContent(const std::string& content) {

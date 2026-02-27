@@ -63,10 +63,14 @@ void MainWindow::setupUI() {
     quick_open_dialog_->setWorkingDirectory(working_directory_);
 
     file_explorer_ = std::make_unique<FileExplorer>();
-    file_explorer_->set_size_request(220, -1);
     file_explorer_->signal_file_activated().connect(
         sigc::mem_fun(*this, &MainWindow::onExplorerFileActivated));
     file_explorer_->setRootDirectory(working_directory_);
+
+    search_panel_ = std::make_unique<SearchPanel>();
+    search_panel_->setWorkingDirectory(working_directory_);
+    search_panel_->setFileOpenCallback(
+        sigc::mem_fun(*this, &MainWindow::openFileAtLine));
 
     terminal_widget_ = std::make_unique<TerminalWidget>();
     terminal_widget_->setWorkingDirectory(working_directory_);
@@ -78,10 +82,16 @@ void MainWindow::setupUI() {
     content_vpaned_.pack2(*terminal_widget_, false, true);
     content_vpaned_.set_position(600);
 
-    main_paned_.pack1(*file_explorer_, false, false);
+    // Sidebar: tabbed notebook with Explorer and Search panels
+    sidebar_notebook_.set_tab_pos(Gtk::POS_TOP);
+    sidebar_notebook_.set_size_request(240, -1);
+    sidebar_notebook_.append_page(*file_explorer_, "Explorer");
+    sidebar_notebook_.append_page(*search_panel_, "Search");
+
+    main_paned_.pack1(sidebar_notebook_, false, false);
     content_box_.pack_start(content_vpaned_, true, true);
     main_paned_.pack2(content_box_, true, true);
-    main_paned_.set_position(220);
+    main_paned_.set_position(240);
 
     main_box_.pack_start(main_paned_, true, true);
     main_box_.pack_end(status_bar_, false, false);
@@ -145,6 +155,8 @@ void MainWindow::setupMenuBar() {
             GDK_KEY_F12, Gdk::ModifierType(0));
     addItem(editMenu, "Trigger _Completion", sigc::mem_fun(*this, &MainWindow::onTriggerCompletion),
             GDK_KEY_space, Gdk::CONTROL_MASK);
+    addItem(editMenu, "_Global Search", sigc::mem_fun(*this, &MainWindow::onGlobalSearch),
+            GDK_KEY_f, static_cast<Gdk::ModifierType>(Gdk::CONTROL_MASK | Gdk::SHIFT_MASK));
 
     auto* editMenuitem = Gtk::manage(new Gtk::MenuItem("_Edit", true));
     editMenuitem->set_submenu(*editMenu);
@@ -200,6 +212,7 @@ void MainWindow::setupCommands() {
     add("Set Language",          "",             [this]{ onSelectLanguage(); });
     add("Go to Definition",      "F12",          [this]{ onGotoDefinition(); });
     add("Trigger Completion",    "Ctrl+Space",   [this]{ onTriggerCompletion(); });
+    add("Global Search",         "Ctrl+Shift+F", [this]{ onGlobalSearch(); });
 }
 
 // ---- LSP management ----
@@ -436,6 +449,7 @@ void MainWindow::onOpenFolder() {
         set_title("Xenon - " + folder);
         quick_open_dialog_->setWorkingDirectory(folder);
         file_explorer_->setRootDirectory(folder);
+        search_panel_->setWorkingDirectory(folder);
         if (terminal_widget_) {
             terminal_widget_->setWorkingDirectory(folder);
         }
@@ -727,6 +741,64 @@ void MainWindow::onSelectLanguage() {
                 }
             }
         }
+    }
+}
+
+void MainWindow::onGlobalSearch() {
+    // Switch sidebar to the Search tab
+    sidebar_notebook_.set_current_page(1);
+    search_panel_->focusSearch();
+}
+
+void MainWindow::openFileAtLine(const std::string& path, int line, int col) {
+    try {
+        std::string content = xenon::core::FileManager::readFile(path);
+
+        // Check if already open
+        for (int i = 0; i < notebook_.get_n_pages(); ++i) {
+            auto* split = dynamic_cast<SplitPaneContainer*>(notebook_.get_nth_page(i));
+            if (split) {
+                auto* ed = split->getActiveEditor();
+                if (ed && ed->getFilePath() == path) {
+                    notebook_.set_current_page(i);
+                    // Jump to line
+                    auto buf = ed->getSourceView()->get_buffer();
+                    int max_ln = buf->get_line_count() - 1;
+                    auto iter = buf->get_iter_at_line_offset(
+                        std::min(line - 1, max_ln),
+                        std::max(0, col - 1));
+                    buf->place_cursor(iter);
+                    ed->getSourceView()->scroll_to(iter, 0.3);
+                    return;
+                }
+            }
+        }
+
+        createNewTab();
+        auto* editor = getActiveEditor();
+        if (editor) {
+            editor->setContent(content);
+            editor->setFilePath(path);
+            auto lsp = getLspClientForEditor(editor);
+            if (lsp) editor->setLspClient(lsp);
+            if (git_manager_) editor->setGitManager(git_manager_);
+            updateTabLabel(xenon::core::FileManager::getFileName(path));
+            updateStatusBar();
+
+            // Jump to line
+            Glib::signal_idle().connect_once([editor, line, col]() {
+                auto buf = editor->getSourceView()->get_buffer();
+                int max_ln = buf->get_line_count() - 1;
+                auto iter = buf->get_iter_at_line_offset(
+                    std::min(line - 1, max_ln),
+                    std::max(0, col - 1));
+                buf->place_cursor(iter);
+                editor->getSourceView()->scroll_to(iter, 0.3);
+            });
+        }
+    } catch (const std::exception& e) {
+        Gtk::MessageDialog err(*this, e.what(), false, Gtk::MESSAGE_ERROR, Gtk::BUTTONS_OK);
+        err.run();
     }
 }
 
