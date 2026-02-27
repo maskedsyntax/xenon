@@ -2,6 +2,7 @@
 #include "ui/theme_manager.hpp"
 #include "core/file_manager.hpp"
 #include <filesystem>
+#include <array>
 
 namespace fs = std::filesystem;
 
@@ -128,6 +129,11 @@ void MainWindow::setupMenuBar() {
             GDK_KEY_f, Gdk::CONTROL_MASK);
     addItem(editMenu, "Find and _Replace", sigc::mem_fun(*this, &MainWindow::onEditFindReplace),
             GDK_KEY_h, Gdk::CONTROL_MASK);
+    editMenu->append(*Gtk::manage(new Gtk::SeparatorMenuItem()));
+    addItem(editMenu, "_Go to Definition", sigc::mem_fun(*this, &MainWindow::onGotoDefinition),
+            GDK_KEY_F12, Gdk::ModifierType(0));
+    addItem(editMenu, "Trigger _Completion", sigc::mem_fun(*this, &MainWindow::onTriggerCompletion),
+            GDK_KEY_space, Gdk::CONTROL_MASK);
 
     auto* editMenuitem = Gtk::manage(new Gtk::MenuItem("_Edit", true));
     editMenuitem->set_submenu(*editMenu);
@@ -181,6 +187,52 @@ void MainWindow::setupCommands() {
     add("Split Horizontally",    "Alt+H",        [this]{ onSplitHorizontal(); });
     add("Split Vertically",      "Alt+V",        [this]{ onSplitVertical(); });
     add("Set Language",          "",             [this]{ onSelectLanguage(); });
+    add("Go to Definition",      "F12",          [this]{ onGotoDefinition(); });
+    add("Trigger Completion",    "Ctrl+Space",   [this]{ onTriggerCompletion(); });
+}
+
+// ---- LSP management ----
+
+std::shared_ptr<xenon::lsp::LspClient> MainWindow::getLspClientForEditor(EditorWidget* editor) {
+    if (!editor) return nullptr;
+    std::string path = editor->getFilePath();
+    if (path.empty()) return nullptr;
+
+    // Determine which language server to use based on file extension
+    std::string ext = fs::path(path).extension().string();
+    std::string server_key;
+    std::vector<std::string> cmd;
+
+    if (ext == ".cpp" || ext == ".cxx" || ext == ".cc" || ext == ".c" ||
+        ext == ".h" || ext == ".hpp" || ext == ".hxx") {
+        server_key = "clangd";
+        cmd = {"clangd", "--background-index", "--clang-tidy"};
+    } else if (ext == ".rs") {
+        server_key = "rust-analyzer";
+        cmd = {"rust-analyzer"};
+    } else if (ext == ".go") {
+        server_key = "gopls";
+        cmd = {"gopls"};
+    } else if (ext == ".py") {
+        server_key = "pylsp";
+        cmd = {"pylsp"};
+    } else {
+        return nullptr;
+    }
+
+    auto it = lsp_clients_.find(server_key);
+    if (it != lsp_clients_.end() && it->second->isRunning()) {
+        return it->second;
+    }
+
+    // Start a new LSP server
+    auto client = std::make_shared<xenon::lsp::LspClient>();
+    std::string rootUri = "file://" + working_directory_;
+    if (client->start(cmd, rootUri)) {
+        lsp_clients_[server_key] = client;
+        return client;
+    }
+    return nullptr;
 }
 
 void MainWindow::connectEditorSignals(EditorWidget* editor) {
@@ -188,9 +240,13 @@ void MainWindow::connectEditorSignals(EditorWidget* editor) {
     editor->signal_cursor_moved().connect([this](int line, int col) {
         status_bar_.setCursorPosition(line, col);
     });
-    editor->signal_content_changed().connect([this]() {
-        // Could update modified indicator in tab title here
-    });
+    editor->signal_content_changed().connect([this]() {});
+
+    // Attach LSP client if a suitable server is available
+    auto lsp = getLspClientForEditor(editor);
+    if (lsp) {
+        editor->setLspClient(lsp);
+    }
 }
 
 void MainWindow::createNewTab() {
@@ -312,6 +368,8 @@ void MainWindow::onFileOpen() {
             if (editor) {
                 editor->setContent(content);
                 editor->setFilePath(filename);
+                auto lsp = getLspClientForEditor(editor);
+                if (lsp) editor->setLspClient(lsp);
                 updateTabLabel(xenon::core::FileManager::getFileName(filename));
                 updateStatusBar();
             }
@@ -619,6 +677,16 @@ void MainWindow::onSelectLanguage() {
     }
 }
 
+void MainWindow::onGotoDefinition() {
+    auto* editor = getActiveEditor();
+    if (editor) editor->gotoDefinition();
+}
+
+void MainWindow::onTriggerCompletion() {
+    auto* editor = getActiveEditor();
+    if (editor) editor->triggerCompletion();
+}
+
 void MainWindow::onExplorerFileActivated(const std::string& path) {
     if (path.empty()) return;
 
@@ -638,6 +706,8 @@ void MainWindow::onExplorerFileActivated(const std::string& path) {
         if (editor) {
             editor->setContent(content);
             editor->setFilePath(path);
+            auto lsp = getLspClientForEditor(editor);
+            if (lsp) editor->setLspClient(lsp);
             updateTabLabel(filename);
             updateStatusBar();
         }

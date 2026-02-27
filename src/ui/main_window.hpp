@@ -2,6 +2,7 @@
 
 #include <gtkmm.h>
 #include <memory>
+#include <unordered_map>
 #include "ui/split_pane_container.hpp"
 #include "ui/quick_open_dialog.hpp"
 #include "ui/search_replace_dialog.hpp"
@@ -9,6 +10,7 @@
 #include "ui/terminal_widget.hpp"
 #include "ui/status_bar.hpp"
 #include "ui/command_palette.hpp"
+#include "lsp/lsp_client.hpp"
 
 namespace xenon::ui {
 
@@ -36,6 +38,12 @@ private:
     std::unique_ptr<TerminalWidget> terminal_widget_;
     std::unique_ptr<CommandPalette> command_palette_;
     std::string working_directory_;
+
+    // LSP clients keyed by language server command (e.g. "clangd")
+    std::unordered_map<std::string, std::shared_ptr<xenon::lsp::LspClient>> lsp_clients_;
+
+    std::shared_ptr<xenon::lsp::LspClient> getLspClientForEditor(EditorWidget* editor);
+    void startLspServer(const std::string& command, const std::string& langId);
 
     void setupMenuBar();
     void setupUI();
@@ -71,6 +79,8 @@ private:
     void onToggleMinimap();
     void onToggleSidebar();
     void onExplorerFileActivated(const std::string& path);
+    void onGotoDefinition();
+    void onTriggerCompletion();
 };
 
 } // namespace xenon::ui

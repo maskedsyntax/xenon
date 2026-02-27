@@ -21,6 +21,7 @@ target_compile_options(xenon_ui PRIVATE ${GTK_CFLAGS_OTHER} ${GTKMM_CFLAGS_OTHER
 target_link_libraries(xenon_ui
     PUBLIC
         xenon_core
+        xenon_lsp
         ${GTK_LIBRARIES}
         ${GTKMM_LIBRARIES}
         ${GTKSOURCEVIEW_LIBRARIES}

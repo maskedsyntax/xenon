@@ -4,7 +4,9 @@
 #include <gtksourceviewmm.h>
 #include <memory>
 #include <string>
+#include <vector>
 #include "core/document.hpp"
+#include "lsp/lsp_client.hpp"
 
 namespace xenon::ui {
 
@@ -17,10 +19,7 @@ public:
     std::string getContent() const;
     void saveFile();
 
-    void setFilePath(const std::string& path) {
-        file_path_ = path;
-        applyLanguageHighlighting();
-    }
+    void setFilePath(const std::string& path);
     const std::string& getFilePath() const { return file_path_; }
 
     void setLanguage(const std::string& lang);
@@ -39,6 +38,11 @@ public:
     void toggleMinimap();
     bool isMinimapVisible() const { return minimap_visible_; }
 
+    // LSP
+    void setLspClient(std::shared_ptr<xenon::lsp::LspClient> client);
+    void triggerCompletion();
+    void gotoDefinition();
+
     // Signals
     sigc::signal<void, int, int>& signal_cursor_moved() { return signal_cursor_moved_; }
     sigc::signal<void>& signal_content_changed() { return signal_content_changed_; }
@@ -51,9 +55,15 @@ private:
     Gsv::View* source_view_ = nullptr;
     Gtk::Widget* minimap_widget_ = nullptr;
     Gtk::ScrolledWindow* scroll_window_ = nullptr;
-    Gtk::Paned* editor_paned_ = nullptr;
     std::string file_path_;
     bool minimap_visible_ = false;
+    int doc_version_ = 1;
+
+    // LSP
+    std::shared_ptr<xenon::lsp::LspClient> lsp_client_;
+    Gtk::Window* completion_popup_ = nullptr;
+    Glib::RefPtr<Gtk::TextTag> error_tag_;
+    Glib::RefPtr<Gtk::TextTag> warning_tag_;
 
     sigc::signal<void, int, int> signal_cursor_moved_;
     sigc::signal<void> signal_content_changed_;
@@ -61,6 +71,15 @@ private:
     void onDocumentChanged();
     void applyLanguageHighlighting();
     void onCursorMoved(const Gtk::TextIter& iter, const Glib::RefPtr<Gtk::TextMark>& mark);
+
+    // LSP helpers
+    void setupDiagnosticTags();
+    void applyDiagnostics(const std::vector<xenon::lsp::Diagnostic>& diags);
+    void showCompletionPopup(const std::vector<xenon::lsp::CompletionItem>& items);
+    void hideCompletionPopup();
+    void insertCompletion(const std::string& text);
+    std::string currentWordPrefix() const;
+    std::string languageIdFromPath(const std::string& path) const;
 };
 
 } // namespace xenon::ui
