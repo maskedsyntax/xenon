@@ -6,6 +6,7 @@
 #include <cctype>
 #include <regex>
 #include <filesystem>
+#include <chrono>
 
 #ifdef HAVE_GTKSOURCEVIEW
 #include <gtksourceview/gtksource.h>
@@ -72,6 +73,7 @@ EditorWidget::EditorWidget()
     });
 
     setupGitMarkAttributes();
+    setupHoverTooltip();
 
     show_all();
 }
@@ -419,6 +421,70 @@ std::string EditorWidget::currentWordPrefix() const {
         }
     }
     return source_buffer_->get_text(word_start, cursor).raw();
+}
+
+// ---- Hover tooltip ----
+
+void EditorWidget::setupHoverTooltip() {
+    source_view_->set_has_tooltip(true);
+    source_view_->signal_query_tooltip().connect(
+        sigc::mem_fun(*this, &EditorWidget::onQueryTooltip), false);
+}
+
+bool EditorWidget::onQueryTooltip(int x, int y, bool /*keyboard_mode*/,
+                                   const Glib::RefPtr<Gtk::Tooltip>& tooltip) {
+    if (!lsp_client_ || !lsp_client_->isRunning() || file_path_.empty()) {
+        return false;
+    }
+
+    // Convert window coords to buffer coords
+    int buf_x = 0, buf_y = 0;
+    source_view_->window_to_buffer_coords(Gtk::TEXT_WINDOW_TEXT, x, y, buf_x, buf_y);
+
+    Gtk::TextIter iter;
+    source_view_->get_iter_at_location(iter, buf_x, buf_y);
+    int hover_line = iter.get_line();      // 0-based
+    int hover_col  = iter.get_line_offset(); // 0-based
+
+    // Store hover result in shared_ptr for async capture
+    auto result = std::make_shared<std::string>();
+    auto done   = std::make_shared<bool>(false);
+
+    lsp_client_->requestHover("file://" + file_path_, hover_line, hover_col,
+        [result, done](const std::string& content) {
+            *result = content;
+            *done = true;
+        });
+
+    // Busy-wait a short time (max 200ms) for the hover response
+    // This is acceptable since GTK tooltip query is already on the main thread
+    // and the LSP response comes from another thread quickly
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(200);
+    while (!*done && std::chrono::steady_clock::now() < deadline) {
+        Glib::MainContext::get_default()->iteration(false);
+    }
+
+    if (*done && !result->empty()) {
+        // Trim and limit tooltip text
+        std::string text = *result;
+        if (text.size() > 512) text = text.substr(0, 509) + "...";
+        tooltip->set_text(text);
+        return true;
+    }
+
+    return false;
+}
+
+void EditorWidget::showHoverPopup(const std::string& /*content*/,
+                                   int /*screen_x*/, int /*screen_y*/) {
+    // Unused — using GTK tooltip mechanism instead
+}
+
+void EditorWidget::hideHoverPopup() {
+    if (hover_popup_) {
+        delete hover_popup_;
+        hover_popup_ = nullptr;
+    }
 }
 
 // ---- Git diff gutter ----

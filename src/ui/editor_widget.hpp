@@ -54,6 +54,9 @@ public:
     void startWatchingFile();
     void stopWatchingFile();
 
+    // LSP hover
+    void setupHoverTooltip();
+
     // Signals
     sigc::signal<void, int, int>& signal_cursor_moved() { return signal_cursor_moved_; }
     sigc::signal<void>& signal_content_changed() { return signal_content_changed_; }
@@ -88,6 +91,13 @@ private:
     void onFileChanged(const Glib::RefPtr<Gio::File>& file,
                        const Glib::RefPtr<Gio::File>& other,
                        Gio::FileMonitorEvent event);
+
+    // Hover
+    Gtk::Window* hover_popup_ = nullptr;
+    sigc::connection hover_timeout_conn_;
+    bool onQueryTooltip(int x, int y, bool keyboard_mode, const Glib::RefPtr<Gtk::Tooltip>& tooltip);
+    void showHoverPopup(const std::string& content, int screen_x, int screen_y);
+    void hideHoverPopup();
     Glib::RefPtr<Gsv::MarkAttributes> git_added_attrs_;
     Glib::RefPtr<Gsv::MarkAttributes> git_modified_attrs_;
     Glib::RefPtr<Gsv::MarkAttributes> git_deleted_attrs_;
