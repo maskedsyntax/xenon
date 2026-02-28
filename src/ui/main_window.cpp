@@ -72,21 +72,45 @@ void MainWindow::setupUI() {
     search_panel_->setFileOpenCallback(
         sigc::mem_fun(*this, &MainWindow::openFileAtLine));
 
+    problems_panel_ = std::make_unique<ProblemsPanel>();
+    problems_panel_->setJumpCallback([this](const std::string& uri, int line, int col) {
+        std::string path = uri;
+        if (path.substr(0, 7) == "file://") path = path.substr(7);
+        openFileAtLine(path, line, col);
+    });
+
+    settings_dialog_ = std::make_unique<SettingsDialog>(*this);
+    settings_dialog_->setApplyCallback([this](const EditorSettings& s) {
+        current_settings_ = s;
+        applySettingsToAllEditors();
+    });
+
     terminal_widget_ = std::make_unique<TerminalWidget>();
     terminal_widget_->setWorkingDirectory(working_directory_);
     terminal_widget_->get_style_context()->add_class("xenon-terminal");
 
     command_palette_ = std::make_unique<CommandPalette>(*this);
 
-    content_vpaned_.pack1(notebook_, true, true);
+    // Breadcrumb bar above the editor notebook
+    auto* editor_area = Gtk::manage(new Gtk::Box(Gtk::ORIENTATION_VERTICAL));
+    breadcrumb_bar_.set_size_request(-1, 28);
+    breadcrumb_bar_.setDirCallback([this](const std::string& path) {
+        // Open folder in explorer when breadcrumb segment is clicked
+        file_explorer_->setRootDirectory(path);
+    });
+    editor_area->pack_start(breadcrumb_bar_, false, false);
+    editor_area->pack_start(notebook_, true, true);
+
+    content_vpaned_.pack1(*editor_area, true, true);
     content_vpaned_.pack2(*terminal_widget_, false, true);
     content_vpaned_.set_position(600);
 
-    // Sidebar: tabbed notebook with Explorer and Search panels
+    // Sidebar: tabbed notebook with Explorer, Search, and Problems panels
     sidebar_notebook_.set_tab_pos(Gtk::POS_TOP);
     sidebar_notebook_.set_size_request(240, -1);
     sidebar_notebook_.append_page(*file_explorer_, "Explorer");
     sidebar_notebook_.append_page(*search_panel_, "Search");
+    sidebar_notebook_.append_page(*problems_panel_, "Problems");
 
     main_paned_.pack1(sidebar_notebook_, false, false);
     content_box_.pack_start(content_vpaned_, true, true);
@@ -157,6 +181,9 @@ void MainWindow::setupMenuBar() {
             GDK_KEY_space, Gdk::CONTROL_MASK);
     addItem(editMenu, "_Global Search", sigc::mem_fun(*this, &MainWindow::onGlobalSearch),
             GDK_KEY_f, static_cast<Gdk::ModifierType>(Gdk::CONTROL_MASK | Gdk::SHIFT_MASK));
+    editMenu->append(*Gtk::manage(new Gtk::SeparatorMenuItem()));
+    addItem(editMenu, "_Preferences", sigc::mem_fun(*this, &MainWindow::onPreferences),
+            GDK_KEY_comma, Gdk::CONTROL_MASK);
 
     auto* editMenuitem = Gtk::manage(new Gtk::MenuItem("_Edit", true));
     editMenuitem->set_submenu(*editMenu);
@@ -213,6 +240,7 @@ void MainWindow::setupCommands() {
     add("Go to Definition",      "F12",          [this]{ onGotoDefinition(); });
     add("Trigger Completion",    "Ctrl+Space",   [this]{ onTriggerCompletion(); });
     add("Global Search",         "Ctrl+Shift+F", [this]{ onGlobalSearch(); });
+    add("Preferences",           "Ctrl+,",       [this]{ onPreferences(); });
 }
 
 // ---- LSP management ----
@@ -275,6 +303,18 @@ void MainWindow::connectEditorSignals(EditorWidget* editor) {
     // Attach LSP client if a suitable server is available
     auto lsp = getLspClientForEditor(editor);
     if (lsp) {
+        // Hook diagnostics into the problems panel
+        std::string ep = editor->getFilePath();
+        lsp->setDiagnosticsCallback([this, ep](const std::string& uri,
+                                               std::vector<xenon::lsp::Diagnostic> diags) {
+            // Forward to problems panel on main thread
+            Glib::signal_idle().connect_once(
+                [this, uri, d = std::move(diags)]() {
+                    if (problems_panel_) {
+                        problems_panel_->updateDiagnostics(uri, d);
+                    }
+                });
+        });
         editor->setLspClient(lsp);
     }
 
@@ -357,6 +397,7 @@ void MainWindow::updateStatusBar() {
         status_bar_.setLanguage("Plain Text");
         status_bar_.setEncoding("UTF-8");
         status_bar_.setLineEnding("LF");
+        breadcrumb_bar_.setPath("");
         return;
     }
     auto [line, col] = editor->getCursorPosition();
@@ -364,6 +405,7 @@ void MainWindow::updateStatusBar() {
     status_bar_.setLanguage(editor->getLanguageName());
     status_bar_.setEncoding(editor->getEncoding());
     status_bar_.setLineEnding(editor->getLineEnding());
+    breadcrumb_bar_.setPath(editor->getFilePath());
 }
 
 void MainWindow::markTabModified(bool modified) {
@@ -739,6 +781,24 @@ void MainWindow::onSelectLanguage() {
                     }
                     count++;
                 }
+            }
+        }
+    }
+}
+
+void MainWindow::onPreferences() {
+    settings_dialog_->setSettings(current_settings_);
+    settings_dialog_->show();
+    settings_dialog_->run();
+    settings_dialog_->hide();
+}
+
+void MainWindow::applySettingsToAllEditors() {
+    for (int i = 0; i < notebook_.get_n_pages(); ++i) {
+        auto* split = dynamic_cast<SplitPaneContainer*>(notebook_.get_nth_page(i));
+        if (split) {
+            for (auto* ed : split->getAllEditors()) {
+                if (ed) ed->applySettings(current_settings_);
             }
         }
     }

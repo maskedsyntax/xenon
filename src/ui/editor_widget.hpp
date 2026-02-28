@@ -9,6 +9,7 @@
 #include "core/document.hpp"
 #include "lsp/lsp_client.hpp"
 #include "git/git_manager.hpp"
+#include "ui/settings_dialog.hpp"
 
 namespace xenon::ui {
 
@@ -42,6 +43,7 @@ public:
     bool isMinimapVisible() const { return minimap_visible_; }
 
     // LSP
+    void applySettings(const struct EditorSettings& s);
     void setLspClient(std::shared_ptr<xenon::lsp::LspClient> client);
     void triggerCompletion();
     void gotoDefinition();

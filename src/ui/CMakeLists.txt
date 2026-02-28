@@ -10,6 +10,9 @@ add_library(xenon_ui STATIC
     theme_manager.cpp
     command_palette.cpp
     search_panel.cpp
+    breadcrumb_bar.cpp
+    problems_panel.cpp
+    settings_dialog.cpp
 )
 
 target_include_directories(xenon_ui

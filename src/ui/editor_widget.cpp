@@ -1,4 +1,5 @@
 #include "ui/editor_widget.hpp"
+#include "ui/settings_dialog.hpp"
 #include "core/file_manager.hpp"
 #include "features/search_engine.hpp"
 #include "git/git_manager.hpp"
@@ -421,6 +422,35 @@ std::string EditorWidget::currentWordPrefix() const {
         }
     }
     return source_buffer_->get_text(word_start, cursor).raw();
+}
+
+// ---- Settings ----
+
+void EditorWidget::applySettings(const EditorSettings& s) {
+    if (!source_view_) return;
+
+    Pango::FontDescription font_desc(s.font_name);
+    source_view_->override_font(font_desc);
+    source_view_->set_tab_width(static_cast<guint>(s.tab_width));
+    source_view_->set_insert_spaces_instead_of_tabs(s.spaces_for_tabs);
+    source_view_->set_show_line_numbers(s.show_line_numbers);
+    source_view_->set_highlight_current_line(s.highlight_line);
+    source_view_->set_auto_indent(s.auto_indent);
+    source_view_->set_show_right_margin(s.show_right_margin);
+    source_view_->set_right_margin_position(static_cast<guint>(s.right_margin_col));
+
+    if (s.word_wrap) {
+        source_view_->set_wrap_mode(Gtk::WRAP_WORD_CHAR);
+    } else {
+        source_view_->set_wrap_mode(Gtk::WRAP_NONE);
+    }
+
+    auto scheme_manager = Gsv::StyleSchemeManager::get_default();
+    auto scheme = scheme_manager->get_scheme(s.color_scheme);
+    if (!scheme) scheme = scheme_manager->get_scheme("classic");
+    if (scheme && source_buffer_) {
+        source_buffer_->set_style_scheme(scheme);
+    }
 }
 
 // ---- Hover tooltip ----
