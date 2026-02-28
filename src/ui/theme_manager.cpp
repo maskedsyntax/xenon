@@ -66,7 +66,7 @@ menu separator {
 .xenon-notebook > header.top {
     background-color: #252526;
     border-bottom: 1px solid #444444;
-    padding: 5px 4px 0 4px;
+    padding: 3px 4px 0 4px;
 }
 
 .xenon-notebook > header.top > tabs {
@@ -79,15 +79,15 @@ menu separator {
 .xenon-notebook > header.top > tabs > tab {
     background-color: #2d2d2d;
     color: #909090;
-    border-radius: 6px 6px 0 0;
+    border-radius: 5px 5px 0 0;
     border-top: 2px solid transparent;
     border-left: 1px solid #3a3a3a;
     border-right: 1px solid #3a3a3a;
     border-bottom: none;
-    padding: 5px 10px;
+    padding: 3px 8px;
     margin: 0 2px 0 0;
-    margin-top: 3px;
-    min-width: 80px;
+    margin-top: 2px;
+    min-width: 60px;
     outline: none;
     -gtk-outline-radius: 0;
 }
@@ -157,7 +157,7 @@ menu separator {
     border-radius: 0;
     border: none;
     border-bottom: 2px solid transparent;
-    padding: 6px 14px;
+    padding: 4px 10px;
     margin: 0;
     min-width: 0;
     font-size: 11px;

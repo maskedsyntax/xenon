@@ -394,6 +394,7 @@ void MainWindow::createNewTab() {
     Glib::signal_idle().connect([this, split_pane]() {
         auto* editor = split_pane->getActiveEditor();
         if (editor) {
+            editor->applySettings(current_settings_);
             connectEditorSignals(editor);
             editor->grab_focus();
         }
@@ -850,9 +851,7 @@ void MainWindow::onSelectLanguage() {
 
 void MainWindow::onPreferences() {
     settings_dialog_->setSettings(current_settings_);
-    settings_dialog_->show();
-    settings_dialog_->run();
-    settings_dialog_->hide();
+    settings_dialog_->present();  // Non-blocking; signal_response() handles close
 }
 
 void MainWindow::applySettingsToAllEditors() {
@@ -934,7 +933,13 @@ void MainWindow::onGotoDefinition() {
 
 void MainWindow::onTriggerCompletion() {
     auto* editor = getActiveEditor();
-    if (editor) editor->triggerCompletion();
+    if (!editor) return;
+    if (!editor->isLspRunning()) {
+        status_bar_.setMessage("No language server available for this file type");
+        Glib::signal_timeout().connect_once([this]() { status_bar_.setMessage(""); }, 3000);
+        return;
+    }
+    editor->triggerCompletion();
 }
 
 void MainWindow::onExplorerFileActivated(const std::string& path) {

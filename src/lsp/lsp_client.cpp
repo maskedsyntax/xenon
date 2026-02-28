@@ -171,6 +171,10 @@ void LspClient::readerThread() {
             }
         }
     }
+    // Server process exited or pipe was closed — mark as not running so
+    // callers see the correct state via isRunning().
+    running_ = false;
+    initialized_ = false;
 }
 
 void LspClient::processMessage(const JsonValue& msg) {
@@ -397,7 +401,7 @@ void LspClient::didSave(const std::string& uri) {
 
 void LspClient::requestCompletion(const std::string& uri, int line, int col,
                                   CompletionCallback cb) {
-    if (!running_) return;
+    if (!running_ || !initialized_) return;
     int id = next_id_++;
     {
         std::lock_guard<std::mutex> lock(cb_mutex_);
@@ -418,7 +422,7 @@ void LspClient::requestCompletion(const std::string& uri, int line, int col,
 
 void LspClient::requestHover(const std::string& uri, int line, int col,
                              HoverCallback cb) {
-    if (!running_) return;
+    if (!running_ || !initialized_) return;
     int id = next_id_++;
     {
         std::lock_guard<std::mutex> lock(cb_mutex_);
@@ -439,7 +443,7 @@ void LspClient::requestHover(const std::string& uri, int line, int col,
 
 void LspClient::requestDefinition(const std::string& uri, int line, int col,
                                   DefinitionCallback cb) {
-    if (!running_) return;
+    if (!running_ || !initialized_) return;
     int id = next_id_++;
     {
         std::lock_guard<std::mutex> lock(cb_mutex_);

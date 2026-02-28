@@ -46,6 +46,7 @@ public:
 
     void stop();
     bool isRunning() const { return running_; }
+    bool isInitialized() const { return initialized_; }
 
     // LSP protocol methods
     void didOpen(const std::string& uri, const std::string& languageId,

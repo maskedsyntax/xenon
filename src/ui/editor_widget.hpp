@@ -45,6 +45,9 @@ public:
     // LSP
     void applySettings(const struct EditorSettings& s);
     void setLspClient(std::shared_ptr<xenon::lsp::LspClient> client);
+    bool isLspRunning() const {
+        return lsp_client_ && lsp_client_->isRunning() && lsp_client_->isInitialized();
+    }
 
     // Zoom
     void zoomIn();
