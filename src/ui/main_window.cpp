@@ -2,6 +2,8 @@
 #include "ui/theme_manager.hpp"
 #include "core/file_manager.hpp"
 #include <filesystem>
+#include <fstream>
+#include <cstdlib>
 #include <array>
 
 namespace fs = std::filesystem;
@@ -156,6 +158,16 @@ void MainWindow::setupMenuBar() {
     fileMenu->append(*Gtk::manage(new Gtk::SeparatorMenuItem()));
     addItem(fileMenu, "Close _Tab", sigc::mem_fun(*this, &MainWindow::onFileCloseTab),
             GDK_KEY_w, Gdk::CONTROL_MASK);
+    fileMenu->append(*Gtk::manage(new Gtk::SeparatorMenuItem()));
+
+    // Recent files submenu
+    recent_menu_ = Gtk::manage(new Gtk::Menu());
+    auto* recentItem = Gtk::manage(new Gtk::MenuItem("Recent _Files", true));
+    recentItem->set_submenu(*recent_menu_);
+    fileMenu->append(*recentItem);
+    rebuildRecentFilesMenu();
+    fileMenu->append(*Gtk::manage(new Gtk::SeparatorMenuItem()));
+
     addItem(fileMenu, "_Quit", sigc::mem_fun(*this, &MainWindow::onFileQuit));
 
     auto* fileMenuitem = Gtk::manage(new Gtk::MenuItem("_File", true));
@@ -184,6 +196,16 @@ void MainWindow::setupMenuBar() {
     editMenu->append(*Gtk::manage(new Gtk::SeparatorMenuItem()));
     addItem(editMenu, "_Preferences", sigc::mem_fun(*this, &MainWindow::onPreferences),
             GDK_KEY_comma, Gdk::CONTROL_MASK);
+    editMenu->append(*Gtk::manage(new Gtk::SeparatorMenuItem()));
+    addItem(editMenu, "_Undo", sigc::mem_fun(*this, &MainWindow::onUndo),
+            GDK_KEY_z, Gdk::CONTROL_MASK);
+    addItem(editMenu, "_Redo", sigc::mem_fun(*this, &MainWindow::onRedo),
+            GDK_KEY_y, Gdk::CONTROL_MASK);
+    editMenu->append(*Gtk::manage(new Gtk::SeparatorMenuItem()));
+    addItem(editMenu, "Toggle _Line Comment", sigc::mem_fun(*this, &MainWindow::onToggleLineComment),
+            GDK_KEY_slash, Gdk::CONTROL_MASK);
+    addItem(editMenu, "Toggle _Block Comment", sigc::mem_fun(*this, &MainWindow::onToggleBlockComment),
+            GDK_KEY_slash, static_cast<Gdk::ModifierType>(Gdk::CONTROL_MASK | Gdk::SHIFT_MASK));
 
     auto* editMenuitem = Gtk::manage(new Gtk::MenuItem("_Edit", true));
     editMenuitem->set_submenu(*editMenu);
@@ -204,6 +226,16 @@ void MainWindow::setupMenuBar() {
             GDK_KEY_v, Gdk::MOD1_MASK);
     viewMenu->append(*Gtk::manage(new Gtk::SeparatorMenuItem()));
     addItem(viewMenu, "Set _Language", sigc::mem_fun(*this, &MainWindow::onSelectLanguage));
+    viewMenu->append(*Gtk::manage(new Gtk::SeparatorMenuItem()));
+    addItem(viewMenu, "Zoom _In",  sigc::mem_fun(*this, &MainWindow::onZoomIn),
+            GDK_KEY_equal, Gdk::CONTROL_MASK);
+    addItem(viewMenu, "Zoom _Out", sigc::mem_fun(*this, &MainWindow::onZoomOut),
+            GDK_KEY_minus, Gdk::CONTROL_MASK);
+    addItem(viewMenu, "Reset _Zoom", sigc::mem_fun(*this, &MainWindow::onZoomReset),
+            GDK_KEY_0, Gdk::CONTROL_MASK);
+    viewMenu->append(*Gtk::manage(new Gtk::SeparatorMenuItem()));
+    addItem(viewMenu, "_Zen Mode", sigc::mem_fun(*this, &MainWindow::onToggleZenMode),
+            GDK_KEY_F11, Gdk::ModifierType(0));
 
     auto* viewMenuitem = Gtk::manage(new Gtk::MenuItem("_View", true));
     viewMenuitem->set_submenu(*viewMenu);
@@ -471,6 +503,7 @@ void MainWindow::onFileOpen() {
                 if (lsp) editor->setLspClient(lsp);
                 updateTabLabel(xenon::core::FileManager::getFileName(filename));
                 updateStatusBar();
+                addToRecentFiles(filename);
             }
         } catch (const std::exception& e) {
             Gtk::MessageDialog err(*this, e.what(), false, Gtk::MESSAGE_ERROR, Gtk::BUTTONS_OK);
@@ -628,6 +661,7 @@ void MainWindow::onQuickOpen() {
                     editor->setFilePath(filepath);
                     updateTabLabel(xenon::core::FileManager::getFileName(filepath));
                     updateStatusBar();
+                    addToRecentFiles(filepath);
                 }
             } catch (const std::exception& e) {
                 Gtk::MessageDialog err(*this, e.what(), false, Gtk::MESSAGE_ERROR, Gtk::BUTTONS_OK);
@@ -641,10 +675,10 @@ void MainWindow::onQuickOpen() {
 // ---- View actions ----
 
 void MainWindow::onToggleSidebar() {
-    if (file_explorer_->is_visible()) {
-        file_explorer_->hide();
+    if (sidebar_notebook_.is_visible()) {
+        sidebar_notebook_.hide();
     } else {
-        file_explorer_->show();
+        sidebar_notebook_.show();
     }
 }
 
@@ -895,11 +929,144 @@ void MainWindow::onExplorerFileActivated(const std::string& path) {
             if (lsp) editor->setLspClient(lsp);
             updateTabLabel(filename);
             updateStatusBar();
+            addToRecentFiles(path);
         }
     } catch (const std::exception& e) {
         Gtk::MessageDialog err(*this, e.what(), false, Gtk::MESSAGE_ERROR, Gtk::BUTTONS_OK);
         err.run();
     }
+}
+
+// ---- Zoom actions ----
+
+void MainWindow::onZoomIn() {
+    auto* editor = getActiveEditor();
+    if (editor) editor->zoomIn();
+}
+
+void MainWindow::onZoomOut() {
+    auto* editor = getActiveEditor();
+    if (editor) editor->zoomOut();
+}
+
+void MainWindow::onZoomReset() {
+    auto* editor = getActiveEditor();
+    if (editor) editor->zoomReset();
+}
+
+// ---- Undo / Redo ----
+
+void MainWindow::onUndo() {
+    auto* editor = getActiveEditor();
+    if (editor) editor->undo();
+}
+
+void MainWindow::onRedo() {
+    auto* editor = getActiveEditor();
+    if (editor) editor->redo();
+}
+
+// ---- Zen mode ----
+
+void MainWindow::onToggleZenMode() {
+    zen_mode_ = !zen_mode_;
+    if (zen_mode_) {
+        fullscreen();
+        menubar_.hide();
+        sidebar_notebook_.hide();
+        status_bar_.hide();
+        breadcrumb_bar_.hide();
+        if (terminal_widget_) terminal_widget_->hide();
+    } else {
+        unfullscreen();
+        menubar_.show();
+        sidebar_notebook_.show();
+        status_bar_.show();
+        breadcrumb_bar_.show();
+    }
+}
+
+// ---- Line / block commenting ----
+
+void MainWindow::onToggleLineComment() {
+    auto* editor = getActiveEditor();
+    if (editor) editor->toggleLineComment();
+}
+
+void MainWindow::onToggleBlockComment() {
+    auto* editor = getActiveEditor();
+    if (editor) editor->toggleBlockComment();
+}
+
+// ---- Recent files ----
+
+static std::string recentFilesPath() {
+    const char* home = std::getenv("HOME");
+    std::string dir = home ? std::string(home) + "/.config/xenon" : "/tmp";
+    fs::create_directories(dir);
+    return dir + "/recent_files";
+}
+
+void MainWindow::addToRecentFiles(const std::string& path) {
+    if (path.empty()) return;
+
+    // Read existing list
+    std::vector<std::string> files;
+    std::ifstream in(recentFilesPath());
+    if (in) {
+        std::string line;
+        while (std::getline(in, line)) {
+            if (!line.empty() && line != path) {
+                files.push_back(line);
+            }
+        }
+    }
+
+    // Prepend new entry and cap at 10
+    files.insert(files.begin(), path);
+    if (files.size() > 10) files.resize(10);
+
+    // Write back
+    std::ofstream out(recentFilesPath(), std::ios::trunc);
+    for (const auto& f : files) {
+        out << f << '\n';
+    }
+
+    rebuildRecentFilesMenu();
+}
+
+void MainWindow::rebuildRecentFilesMenu() {
+    if (!recent_menu_) return;
+
+    // Clear existing items
+    for (auto* child : recent_menu_->get_children()) {
+        recent_menu_->remove(*child);
+    }
+
+    std::vector<std::string> files;
+    std::ifstream in(recentFilesPath());
+    if (in) {
+        std::string line;
+        while (std::getline(in, line)) {
+            if (!line.empty()) files.push_back(line);
+        }
+    }
+
+    if (files.empty()) {
+        auto* empty = Gtk::manage(new Gtk::MenuItem("(No recent files)"));
+        empty->set_sensitive(false);
+        recent_menu_->append(*empty);
+    } else {
+        for (const auto& fpath : files) {
+            std::string label = fs::path(fpath).filename().string() + "  " + fpath;
+            auto* item = Gtk::manage(new Gtk::MenuItem(label));
+            item->signal_activate().connect([this, fpath]() {
+                openFileAtLine(fpath, 1, 1);
+            });
+            recent_menu_->append(*item);
+        }
+    }
+    recent_menu_->show_all();
 }
 
 } // namespace xenon::ui
