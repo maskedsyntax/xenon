@@ -97,9 +97,25 @@ private:
     void onPreferences();
     void applySettingsToAllEditors();
     void onExplorerFileActivated(const std::string& path);
+    void onZoomIn();
+    void onZoomOut();
+    void onZoomReset();
+    void onUndo();
+    void onRedo();
+    void onToggleZenMode();
+    void onToggleLineComment();
+    void onToggleBlockComment();
+    void addToRecentFiles(const std::string& path);
+    void rebuildRecentFilesMenu();
+    bool zen_mode_ = false;
+    Gtk::Menu* recent_menu_ = nullptr;
     void onGotoDefinition();
     void onTriggerCompletion();
     void openFileAtLine(const std::string& path, int line, int col);
+    void onSelectNextOccurrence();
+    void onFoldAtCursor();
+    void onUnfoldAtCursor();
+    void onUnfoldAll();
 };
 
 } // namespace xenon::ui

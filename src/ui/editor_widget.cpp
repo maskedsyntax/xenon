@@ -17,6 +17,8 @@ namespace fs = std::filesystem;
 
 namespace xenon::ui {
 
+int EditorWidget::extra_sel_counter_ = 0;
+
 EditorWidget::EditorWidget()
     : Gtk::Box(Gtk::ORIENTATION_VERTICAL),
       document_(std::make_unique<xenon::core::Document>()) {
@@ -75,6 +77,10 @@ EditorWidget::EditorWidget()
 
     setupGitMarkAttributes();
     setupHoverTooltip();
+
+    // Multiple cursor key press handler (runs before default)
+    source_view_->signal_key_press_event().connect(
+        sigc::mem_fun(*this, &EditorWidget::onSourceViewKeyPress), false);
 
     show_all();
 }
@@ -424,12 +430,150 @@ std::string EditorWidget::currentWordPrefix() const {
     return source_buffer_->get_text(word_start, cursor).raw();
 }
 
+// ---- Zoom ----
+
+void EditorWidget::zoomIn() {
+    font_size_pt_ = std::min(font_size_pt_ + 1, 36);
+    Pango::FontDescription fd(base_font_family_ + " " + std::to_string(font_size_pt_));
+    source_view_->override_font(fd);
+}
+
+void EditorWidget::zoomOut() {
+    font_size_pt_ = std::max(font_size_pt_ - 1, 6);
+    Pango::FontDescription fd(base_font_family_ + " " + std::to_string(font_size_pt_));
+    source_view_->override_font(fd);
+}
+
+void EditorWidget::zoomReset() {
+    font_size_pt_ = 11;
+    Pango::FontDescription fd(base_font_family_ + " " + std::to_string(font_size_pt_));
+    source_view_->override_font(fd);
+}
+
+// ---- Undo / Redo ----
+
+void EditorWidget::undo() {
+    if (source_buffer_->can_undo()) source_buffer_->undo();
+}
+
+void EditorWidget::redo() {
+    if (source_buffer_->can_redo()) source_buffer_->redo();
+}
+
+bool EditorWidget::canUndo() const { return source_buffer_->can_undo(); }
+bool EditorWidget::canRedo() const { return source_buffer_->can_redo(); }
+
+// ---- Line / Block commenting ----
+
+void EditorWidget::toggleLineComment() {
+    auto lang = source_buffer_->get_language();
+    std::string line_comment = "// ";
+    if (lang) {
+        std::string id = lang->get_id().raw();
+        if (id == "python" || id == "ruby" || id == "sh" || id == "perl" ||
+            id == "yaml" || id == "cmake")
+            line_comment = "# ";
+        else if (id == "lua")
+            line_comment = "-- ";
+        else if (id == "html" || id == "xml")
+            line_comment = "";  // use block for markup
+        else if (id == "sql")
+            line_comment = "-- ";
+    }
+    if (line_comment.empty()) return;
+
+    Gtk::TextIter sel_start, sel_end;
+    source_buffer_->get_selection_bounds(sel_start, sel_end);
+    int start_line = sel_start.get_line();
+    int end_line   = sel_end.get_line();
+    // If selection ends at column 0, don't include that line
+    if (sel_end.get_line_offset() == 0 && end_line > start_line) {
+        --end_line;
+    }
+
+    source_buffer_->begin_user_action();
+
+    // Check if all lines are commented (to toggle off)
+    bool all_commented = true;
+    for (int ln = start_line; ln <= end_line && all_commented; ++ln) {
+        auto iter = source_buffer_->get_iter_at_line(ln);
+        // Skip whitespace
+        while (!iter.ends_line() && (iter.get_char() == ' ' || iter.get_char() == '\t'))
+            iter.forward_char();
+        auto end_iter = iter;
+        for (size_t i = 0; i < line_comment.size() && !end_iter.ends_line(); ++i)
+            end_iter.forward_char();
+        if (source_buffer_->get_text(iter, end_iter) != line_comment)
+            all_commented = false;
+    }
+
+    for (int ln = start_line; ln <= end_line; ++ln) {
+        auto iter = source_buffer_->get_iter_at_line(ln);
+        if (all_commented) {
+            // Remove comment prefix
+            while (!iter.ends_line() && (iter.get_char() == ' ' || iter.get_char() == '\t'))
+                iter.forward_char();
+            auto end_iter = iter;
+            for (size_t i = 0; i < line_comment.size() && !end_iter.ends_line(); ++i)
+                end_iter.forward_char();
+            if (source_buffer_->get_text(iter, end_iter) == line_comment)
+                source_buffer_->erase(iter, end_iter);
+        } else {
+            // Insert comment prefix at start of line content
+            while (!iter.ends_line() && (iter.get_char() == ' ' || iter.get_char() == '\t'))
+                iter.forward_char();
+            source_buffer_->insert(iter, line_comment);
+        }
+    }
+
+    source_buffer_->end_user_action();
+}
+
+void EditorWidget::toggleBlockComment() {
+    auto lang = source_buffer_->get_language();
+    std::string block_start = "/* ";
+    std::string block_end   = " */";
+    if (lang) {
+        std::string id = lang->get_id().raw();
+        if (id == "html" || id == "xml") {
+            block_start = "<!-- ";
+            block_end   = " -->";
+        } else if (id == "python") {
+            block_start = '\"' + std::string("\"\"");
+            block_end   = '\"' + std::string("\"\"");
+        }
+    }
+
+    Gtk::TextIter sel_start, sel_end;
+    source_buffer_->get_selection_bounds(sel_start, sel_end);
+    std::string selected = source_buffer_->get_text(sel_start, sel_end);
+
+    source_buffer_->begin_user_action();
+    if (selected.substr(0, block_start.size()) == block_start &&
+        selected.size() >= block_end.size() &&
+        selected.substr(selected.size() - block_end.size()) == block_end) {
+        // Remove block comment
+        std::string uncommented = selected.substr(
+            block_start.size(), selected.size() - block_start.size() - block_end.size());
+        source_buffer_->erase(sel_start, sel_end);
+        source_buffer_->insert(sel_start, uncommented);
+    } else {
+        source_buffer_->erase(sel_start, sel_end);
+        source_buffer_->insert(sel_start, block_start + selected + block_end);
+    }
+    source_buffer_->end_user_action();
+}
+
 // ---- Settings ----
 
 void EditorWidget::applySettings(const EditorSettings& s) {
     if (!source_view_) return;
 
     Pango::FontDescription font_desc(s.font_name);
+    // Track the base font for zoom operations
+    base_font_family_ = font_desc.get_family().raw();
+    font_size_pt_ = static_cast<int>(font_desc.get_size() / Pango::SCALE);
+    if (font_size_pt_ <= 0) font_size_pt_ = 11;
     source_view_->override_font(font_desc);
     source_view_->set_tab_width(static_cast<guint>(s.tab_width));
     source_view_->set_insert_spaces_instead_of_tabs(s.spaces_for_tabs);
@@ -800,6 +944,268 @@ void EditorWidget::setLanguage(const std::string& langId) {
         source_buffer_->set_highlight_syntax(true);
         if (language) source_buffer_->set_language(language);
     }
+}
+
+// ---- Multiple cursors ----
+
+void EditorWidget::clearExtraSelections() {
+    for (auto& sel : extra_selections_) {
+        source_buffer_->delete_mark(sel.start);
+        source_buffer_->delete_mark(sel.end);
+    }
+    extra_selections_.clear();
+}
+
+void EditorWidget::selectNextOccurrence() {
+    auto buf = source_buffer_;
+
+    Gtk::TextIter sel_start, sel_end;
+    bool has_selection = buf->get_selection_bounds(sel_start, sel_end);
+
+    if (!has_selection) {
+        // Select word under cursor
+        auto iter = buf->get_iter_at_mark(buf->get_insert());
+        if (!iter.inside_word() && !iter.ends_word()) return;
+        auto word_start = iter, word_end = iter;
+        if (!word_start.starts_word()) word_start.backward_word_start();
+        if (!word_end.ends_word()) word_end.forward_word_end();
+        buf->select_range(word_start, word_end);
+        return;
+    }
+
+    std::string search_text = buf->get_text(sel_start, sel_end).raw();
+    if (search_text.empty()) return;
+
+    // Search forward from sel_end
+    Gtk::TextIter match_start, match_end;
+    bool found = sel_end.forward_search(
+        search_text, Gtk::TEXT_SEARCH_TEXT_ONLY, match_start, match_end);
+
+    if (!found) {
+        // Wrap around from beginning
+        auto buf_start = buf->begin();
+        found = buf_start.forward_search(
+            search_text, Gtk::TEXT_SEARCH_TEXT_ONLY, match_start, match_end);
+    }
+
+    if (!found) return;
+
+    // Don't re-select the same range (wrap with single match in buffer)
+    if (match_start.get_offset() == sel_start.get_offset()) return;
+
+    // Save current selection as an extra cursor
+    int id = ++extra_sel_counter_;
+    std::string start_name = "xs_start_" + std::to_string(id);
+    std::string end_name   = "xs_end_"   + std::to_string(id);
+
+    ExtraSelection xs;
+    xs.start = buf->create_mark(start_name, sel_start, true);  // left gravity
+    xs.end   = buf->create_mark(end_name,   sel_end,   false); // right gravity
+    extra_selections_.push_back(std::move(xs));
+
+    // Move primary selection to next match
+    buf->select_range(match_start, match_end);
+    source_view_->scroll_to(match_start, 0.3);
+}
+
+bool EditorWidget::onSourceViewKeyPress(GdkEventKey* event) {
+    // If no extra cursors, pass through immediately
+    if (extra_selections_.empty()) return false;
+
+    // Escape clears extra selections
+    if (event->keyval == GDK_KEY_Escape) {
+        clearExtraSelections();
+        return true; // consume
+    }
+
+    // Ctrl+D: add next occurrence
+    if (event->keyval == GDK_KEY_d && (event->state & GDK_CONTROL_MASK)) {
+        selectNextOccurrence();
+        return true;
+    }
+
+    // Determine what kind of edit this is
+    bool is_backspace = (event->keyval == GDK_KEY_BackSpace);
+    bool is_delete    = (event->keyval == GDK_KEY_Delete);
+    gunichar uc       = gdk_keyval_to_unicode(event->keyval);
+    bool is_printable = (uc != 0) && g_unichar_isprint(uc) &&
+                        !(event->state & GDK_CONTROL_MASK) &&
+                        !(event->state & GDK_MOD1_MASK);
+
+    if (!is_backspace && !is_delete && !is_printable) {
+        // Navigation / modifier keys: clear extra cursors and pass through
+        clearExtraSelections();
+        return false;
+    }
+
+    // Build UTF-8 string for printable char
+    std::string insert_str;
+    if (is_printable) {
+        char utf8_buf[8] = {};
+        g_unichar_to_utf8(uc, utf8_buf);
+        insert_str = utf8_buf;
+    }
+
+    // Capture all ranges now (before any edits), sort high→low
+    struct SelRange { int s, e; };
+    std::vector<SelRange> ranges;
+    ranges.reserve(extra_selections_.size());
+    for (auto& sel : extra_selections_) {
+        auto si = source_buffer_->get_iter_at_mark(sel.start);
+        auto ei = source_buffer_->get_iter_at_mark(sel.end);
+        ranges.push_back({si.get_offset(), ei.get_offset()});
+    }
+    std::sort(ranges.begin(), ranges.end(),
+              [](const SelRange& a, const SelRange& b) { return a.s > b.s; });
+
+    source_buffer_->begin_user_action();
+    for (auto& r : ranges) {
+        auto si = source_buffer_->get_iter_at_offset(r.s);
+        auto ei = source_buffer_->get_iter_at_offset(r.e);
+
+        if (is_backspace) {
+            if (si != ei) {
+                source_buffer_->erase(si, ei);
+            } else if (!si.is_start()) {
+                auto prev = si;
+                prev.backward_char();
+                source_buffer_->erase(prev, si);
+            }
+        } else if (is_delete) {
+            if (si != ei) {
+                source_buffer_->erase(si, ei);
+            } else if (!si.is_end()) {
+                auto next = si;
+                next.forward_char();
+                source_buffer_->erase(si, next);
+            }
+        } else {
+            // Printable: erase selection (if any), then insert
+            if (si != ei) source_buffer_->erase(si, ei);
+            si = source_buffer_->get_iter_at_offset(r.s); // re-fetch after erase
+            source_buffer_->insert(si, insert_str);
+        }
+    }
+    source_buffer_->end_user_action();
+
+    // Let the default handler process the primary cursor too
+    return false;
+}
+
+// ---- Code folding ----
+
+static Glib::RefPtr<Gtk::TextTag> getFoldTag(Glib::RefPtr<Gsv::Buffer>& buf) {
+    auto tagTable = buf->get_tag_table();
+    auto tag = tagTable->lookup("fold-hidden");
+    if (!tag) {
+        tag = buf->create_tag("fold-hidden");
+        tag->property_invisible() = true;
+    }
+    return tag;
+}
+
+// Returns {foldStartLine, foldEndLine} exclusive, or {-1,-1} if nothing to fold.
+static std::pair<int,int> findFoldRegion(Glib::RefPtr<Gsv::Buffer>& buf, int currentLine) {
+    int lineCount = buf->get_line_count();
+
+    auto lineStart = buf->get_iter_at_line(currentLine);
+    auto lineEnd = lineStart;
+    lineEnd.forward_to_line_end();
+    std::string lineText = buf->get_text(lineStart, lineEnd).raw();
+
+    // Determine indentation of current line
+    int indent = 0;
+    bool hasContent = false;
+    for (char c : lineText) {
+        if (c == ' ') indent++;
+        else if (c == '\t') indent += 4;
+        else { hasContent = true; break; }
+    }
+    if (!hasContent) return {-1, -1};
+
+    int foldStartLine = currentLine + 1;
+    if (foldStartLine >= lineCount) return {-1, -1};
+
+    int foldEndLine = foldStartLine;
+    for (int i = foldStartLine; i < lineCount; ++i) {
+        auto iStart = buf->get_iter_at_line(i);
+        auto iEnd = iStart;
+        iEnd.forward_to_line_end();
+        std::string iText = buf->get_text(iStart, iEnd).raw();
+
+        // Blank line: tentatively include
+        bool blank = true;
+        for (char c : iText) {
+            if (c != ' ' && c != '\t' && c != '\n' && c != '\r') { blank = false; break; }
+        }
+        if (blank) { foldEndLine = i + 1; continue; }
+
+        int iIndent = 0;
+        for (char c : iText) {
+            if (c == ' ') iIndent++;
+            else if (c == '\t') iIndent += 4;
+            else break;
+        }
+        if (iIndent > indent) {
+            foldEndLine = i + 1;
+        } else {
+            break;
+        }
+    }
+
+    if (foldStartLine >= foldEndLine) return {-1, -1};
+    return {foldStartLine, foldEndLine};
+}
+
+void EditorWidget::foldAtCursor() {
+    auto insert = source_buffer_->get_iter_at_mark(source_buffer_->get_insert());
+    auto [foldStart, foldEnd] = findFoldRegion(source_buffer_, insert.get_line());
+    if (foldStart < 0) return;
+
+    auto tag = getFoldTag(source_buffer_);
+    auto siIter = source_buffer_->get_iter_at_line(foldStart);
+    Gtk::TextIter eiIter;
+    if (foldEnd >= source_buffer_->get_line_count()) {
+        eiIter = source_buffer_->end();
+    } else {
+        eiIter = source_buffer_->get_iter_at_line(foldEnd);
+    }
+
+    // Check if already folded
+    if (siIter.has_tag(tag)) return;
+    source_buffer_->apply_tag(tag, siIter, eiIter);
+}
+
+void EditorWidget::unfoldAtCursor() {
+    auto tag = getFoldTag(source_buffer_);
+    auto insert = source_buffer_->get_iter_at_mark(source_buffer_->get_insert());
+    int currentLine = insert.get_line();
+
+    // Try folded region starting at the next line
+    auto foldStart = source_buffer_->get_iter_at_line(
+        std::min(currentLine + 1, source_buffer_->get_line_count() - 1));
+
+    // If cursor itself is in a fold, adjust
+    if (!foldStart.has_tag(tag)) {
+        // Walk backwards to find the fold region
+        foldStart = insert;
+        while (foldStart.has_tag(tag) && !foldStart.is_start())
+            foldStart.backward_line();
+        foldStart.forward_line();
+    }
+
+    if (!foldStart.has_tag(tag)) return;
+
+    auto foldEnd = foldStart;
+    while (!foldEnd.is_end() && foldEnd.has_tag(tag))
+        foldEnd.forward_line();
+
+    source_buffer_->remove_tag(tag, foldStart, foldEnd);
+}
+
+void EditorWidget::unfoldAll() {
+    auto tag = getFoldTag(source_buffer_);
+    source_buffer_->remove_tag(tag, source_buffer_->begin(), source_buffer_->end());
 }
 
 } // namespace xenon::ui

@@ -206,6 +206,9 @@ void MainWindow::setupMenuBar() {
             GDK_KEY_slash, Gdk::CONTROL_MASK);
     addItem(editMenu, "Toggle _Block Comment", sigc::mem_fun(*this, &MainWindow::onToggleBlockComment),
             GDK_KEY_slash, static_cast<Gdk::ModifierType>(Gdk::CONTROL_MASK | Gdk::SHIFT_MASK));
+    editMenu->append(*Gtk::manage(new Gtk::SeparatorMenuItem()));
+    addItem(editMenu, "Add _Next Occurrence", sigc::mem_fun(*this, &MainWindow::onSelectNextOccurrence),
+            GDK_KEY_d, Gdk::CONTROL_MASK);
 
     auto* editMenuitem = Gtk::manage(new Gtk::MenuItem("_Edit", true));
     editMenuitem->set_submenu(*editMenu);
@@ -236,6 +239,12 @@ void MainWindow::setupMenuBar() {
     viewMenu->append(*Gtk::manage(new Gtk::SeparatorMenuItem()));
     addItem(viewMenu, "_Zen Mode", sigc::mem_fun(*this, &MainWindow::onToggleZenMode),
             GDK_KEY_F11, Gdk::ModifierType(0));
+    viewMenu->append(*Gtk::manage(new Gtk::SeparatorMenuItem()));
+    addItem(viewMenu, "_Fold Region", sigc::mem_fun(*this, &MainWindow::onFoldAtCursor),
+            GDK_KEY_bracketleft, static_cast<Gdk::ModifierType>(Gdk::CONTROL_MASK | Gdk::SHIFT_MASK));
+    addItem(viewMenu, "_Unfold Region", sigc::mem_fun(*this, &MainWindow::onUnfoldAtCursor),
+            GDK_KEY_bracketright, static_cast<Gdk::ModifierType>(Gdk::CONTROL_MASK | Gdk::SHIFT_MASK));
+    addItem(viewMenu, "Unfold _All", sigc::mem_fun(*this, &MainWindow::onUnfoldAll));
 
     auto* viewMenuitem = Gtk::manage(new Gtk::MenuItem("_View", true));
     viewMenuitem->set_submenu(*viewMenu);
@@ -273,6 +282,18 @@ void MainWindow::setupCommands() {
     add("Trigger Completion",    "Ctrl+Space",   [this]{ onTriggerCompletion(); });
     add("Global Search",         "Ctrl+Shift+F", [this]{ onGlobalSearch(); });
     add("Preferences",           "Ctrl+,",       [this]{ onPreferences(); });
+    add("Add Next Occurrence",   "Ctrl+D",       [this]{ onSelectNextOccurrence(); });
+    add("Fold Region",           "Ctrl+Shift+[", [this]{ onFoldAtCursor(); });
+    add("Unfold Region",         "Ctrl+Shift+]", [this]{ onUnfoldAtCursor(); });
+    add("Unfold All",            "",             [this]{ onUnfoldAll(); });
+    add("Zoom In",               "Ctrl+=",       [this]{ onZoomIn(); });
+    add("Zoom Out",              "Ctrl+-",       [this]{ onZoomOut(); });
+    add("Reset Zoom",            "Ctrl+0",       [this]{ onZoomReset(); });
+    add("Undo",                  "Ctrl+Z",       [this]{ onUndo(); });
+    add("Redo",                  "Ctrl+Y",       [this]{ onRedo(); });
+    add("Toggle Line Comment",   "Ctrl+/",       [this]{ onToggleLineComment(); });
+    add("Toggle Block Comment",  "Ctrl+Shift+/", [this]{ onToggleBlockComment(); });
+    add("Zen Mode",              "F11",          [this]{ onToggleZenMode(); });
 }
 
 // ---- LSP management ----
@@ -451,11 +472,14 @@ void MainWindow::markTabModified(bool modified) {
         if (!children.empty()) {
             if (auto* label = dynamic_cast<Gtk::Label*>(children[0])) {
                 std::string text = label->get_text();
-                bool hasPrefix = !text.empty() && text[0] == '\u25CF';  // ● U+25CF
+                // U+25CF ● is encoded as 3 UTF-8 bytes: 0xE2 0x97 0x8F
+                static const std::string kBulletPrefix = "\xe2\x97\x8f ";
+                bool hasPrefix = text.size() >= 4 &&
+                                 text.compare(0, 4, kBulletPrefix) == 0;
                 if (modified && !hasPrefix) {
-                    label->set_text("\u25CF " + text);
+                    label->set_text(kBulletPrefix + text);
                 } else if (!modified && hasPrefix) {
-                    label->set_text(text.substr(3));  // Remove "● " (3 bytes in UTF-8)
+                    label->set_text(text.substr(4));  // Remove "● " (4 bytes: 3 + space)
                 }
             }
         }
@@ -1033,6 +1057,30 @@ void MainWindow::addToRecentFiles(const std::string& path) {
     }
 
     rebuildRecentFilesMenu();
+}
+
+// ---- Multiple cursors ----
+
+void MainWindow::onSelectNextOccurrence() {
+    auto* editor = getActiveEditor();
+    if (editor) editor->selectNextOccurrence();
+}
+
+// ---- Code folding ----
+
+void MainWindow::onFoldAtCursor() {
+    auto* editor = getActiveEditor();
+    if (editor) editor->foldAtCursor();
+}
+
+void MainWindow::onUnfoldAtCursor() {
+    auto* editor = getActiveEditor();
+    if (editor) editor->unfoldAtCursor();
+}
+
+void MainWindow::onUnfoldAll() {
+    auto* editor = getActiveEditor();
+    if (editor) editor->unfoldAll();
 }
 
 void MainWindow::rebuildRecentFilesMenu() {

@@ -45,8 +45,32 @@ public:
     // LSP
     void applySettings(const struct EditorSettings& s);
     void setLspClient(std::shared_ptr<xenon::lsp::LspClient> client);
+
+    // Zoom
+    void zoomIn();
+    void zoomOut();
+    void zoomReset();
+
+    // Undo / Redo
+    void undo();
+    void redo();
+    bool canUndo() const;
+    bool canRedo() const;
+
+    // Line commenting
+    void toggleLineComment();
+    void toggleBlockComment();
     void triggerCompletion();
     void gotoDefinition();
+
+    // Multiple cursors (Ctrl+D)
+    void selectNextOccurrence();
+    void clearExtraSelections();
+
+    // Code folding
+    void foldAtCursor();
+    void unfoldAtCursor();
+    void unfoldAll();
 
     // Git diff gutter
     void setGitManager(std::shared_ptr<xenon::git::GitManager> gm);
@@ -94,6 +118,9 @@ private:
                        const Glib::RefPtr<Gio::File>& other,
                        Gio::FileMonitorEvent event);
 
+    int font_size_pt_ = 11;
+    std::string base_font_family_ = "Monospace";
+
     // Hover
     Gtk::Window* hover_popup_ = nullptr;
     sigc::connection hover_timeout_conn_;
@@ -120,6 +147,15 @@ private:
     void insertCompletion(const std::string& text);
     std::string currentWordPrefix() const;
     std::string languageIdFromPath(const std::string& path) const;
+
+    // Multiple cursors
+    struct ExtraSelection {
+        Glib::RefPtr<Gtk::TextMark> start;
+        Glib::RefPtr<Gtk::TextMark> end;
+    };
+    std::vector<ExtraSelection> extra_selections_;
+    bool onSourceViewKeyPress(GdkEventKey* event);
+    static int extra_sel_counter_; // for unique mark names
 };
 
 } // namespace xenon::ui
