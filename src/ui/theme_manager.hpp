@@ -11,6 +11,9 @@ public:
 
     void applyDarkTheme(Glib::RefPtr<Gdk::Screen> screen);
 
+    // Change the application-wide UI font (empty string = system default)
+    static void applyUIFont(const std::string& font_name);
+
 private:
     ThemeManager() = default;
     Glib::RefPtr<Gtk::CssProvider> css_provider_;

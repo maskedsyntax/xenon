@@ -5,7 +5,7 @@ namespace xenon::ui {
 SettingsDialog::SettingsDialog(Gtk::Window& parent)
     : Gtk::Dialog("Preferences", parent, true) {
 
-    set_default_size(480, 400);
+    set_default_size(480, 440);
 
     tab_adj_    = Gtk::Adjustment::create(4, 1, 16, 1, 4);
     margin_adj_ = Gtk::Adjustment::create(100, 40, 200, 1, 10);
@@ -22,7 +22,8 @@ SettingsDialog::SettingsDialog(Gtk::Window& parent)
     grid_.set_margin_bottom(16);
 
     int row = 0;
-    addRow(row++, "Font", font_btn_);
+    addRow(row++, "Editor Font", font_btn_);
+    addRow(row++, "UI Font", ui_font_btn_);
 
     auto* tab_box = Gtk::manage(new Gtk::Box(Gtk::ORIENTATION_HORIZONTAL, 4));
     tab_box->pack_start(tab_spin_, false, false);
@@ -41,9 +42,9 @@ SettingsDialog::SettingsDialog(Gtk::Window& parent)
     margin_box->pack_start(margin_col_spin_, false, false);
     addRow(row++, "", *margin_box);
 
-    // Color scheme
-    for (const auto& s : {"oblivion", "classic", "tango", "solarized-dark", "solarized-light",
-                           "kate", "cobalt", "monokai-extended"}) {
+    // Color scheme — dark/neutral schemes that work well with the dark UI
+    for (const auto& s : {"oblivion", "solarized-dark", "cobalt", "monokai-extended",
+                           "tango", "kate", "solarized-light", "classic"}) {
         scheme_combo_.append(s, s);
     }
     scheme_combo_.set_active_id("oblivion");
@@ -83,6 +84,7 @@ void SettingsDialog::addRow(int row, const std::string& label, Gtk::Widget& widg
 
 void SettingsDialog::setSettings(const EditorSettings& s) {
     font_btn_.set_font_name(s.font_name);
+    if (!s.ui_font_name.empty()) ui_font_btn_.set_font_name(s.ui_font_name);
     tab_adj_->set_value(s.tab_width);
     spaces_check_.set_active(s.spaces_for_tabs);
     line_numbers_check_.set_active(s.show_line_numbers);
@@ -97,6 +99,7 @@ void SettingsDialog::setSettings(const EditorSettings& s) {
 EditorSettings SettingsDialog::getSettings() const {
     EditorSettings s;
     s.font_name       = font_btn_.get_font_name();
+    s.ui_font_name    = ui_font_btn_.get_font_name();
     s.tab_width       = static_cast<int>(tab_adj_->get_value());
     s.spaces_for_tabs = spaces_check_.get_active();
     s.show_line_numbers = line_numbers_check_.get_active();

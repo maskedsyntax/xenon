@@ -53,54 +53,136 @@ menu separator {
     margin: 4px 0;
 }
 
-/* Notebook (tabs) */
-notebook {
+/* =====================================================
+   EDITOR NOTEBOOK  —  Firefox-style tabs
+   CSS class .xenon-notebook added in C++ code
+   ===================================================== */
+
+.xenon-notebook {
     background-color: #1e1e1e;
 }
 
-notebook > header {
+/* Tab strip header */
+.xenon-notebook > header.top {
+    background-color: #252526;
+    border-bottom: 1px solid #444444;
+    padding: 5px 4px 0 4px;
+}
+
+.xenon-notebook > header.top > tabs {
+    background: transparent;
+    margin: 0;
+    padding: 0;
+}
+
+/* Individual tabs — inactive */
+.xenon-notebook > header.top > tabs > tab {
+    background-color: #2d2d2d;
+    color: #909090;
+    border-radius: 6px 6px 0 0;
+    border-top: 2px solid transparent;
+    border-left: 1px solid #3a3a3a;
+    border-right: 1px solid #3a3a3a;
+    border-bottom: none;
+    padding: 5px 10px;
+    margin: 0 2px 0 0;
+    margin-top: 3px;
+    min-width: 80px;
+    outline: none;
+    -gtk-outline-radius: 0;
+}
+
+/* Active tab — connected to content area */
+.xenon-notebook > header.top > tabs > tab:checked {
+    background-color: #1e1e1e;
+    color: #ffffff;
+    border-top: 2px solid #007acc;
+    border-left: 1px solid #555555;
+    border-right: 1px solid #555555;
+    /* Matching content background hides the strip border → connection illusion */
+    border-bottom: 1px solid #1e1e1e;
+    margin: 0 2px 0 0;
+    margin-top: 0;
+}
+
+.xenon-notebook > header.top > tabs > tab:hover:not(:checked) {
+    background-color: #333333;
+    color: #cccccc;
+}
+
+/* Close button inside each tab */
+.xenon-notebook > header.top > tabs > tab button {
+    background: transparent;
+    border: none;
+    padding: 1px 2px;
+    color: #808080;
+    min-width: 14px;
+    min-height: 14px;
+    border-radius: 3px;
+}
+
+.xenon-notebook > header.top > tabs > tab:hover button,
+.xenon-notebook > header.top > tabs > tab:checked button {
+    color: #cccccc;
+}
+
+.xenon-notebook > header.top > tabs > tab button:hover {
+    background-color: rgba(232, 17, 35, 0.85);
+    color: #ffffff;
+}
+
+/* =====================================================
+   SIDEBAR NOTEBOOK  —  VS Code underline-style tabs
+   CSS class .xenon-sidebar added in C++ code
+   ===================================================== */
+
+.xenon-sidebar {
+    background-color: #252526;
+}
+
+.xenon-sidebar > header.top {
     background-color: #252526;
     border-bottom: 1px solid #3c3c3c;
     padding: 0;
 }
 
-notebook > header > tabs > tab {
-    background-color: #2d2d2d;
-    color: #969696;
-    border: none;
-    border-right: 1px solid #1e1e1e;
-    padding: 6px 12px;
-    min-width: 80px;
+.xenon-sidebar > header.top > tabs {
+    margin: 0;
+    padding: 0;
 }
 
-notebook > header > tabs > tab:checked {
-    background-color: #1e1e1e;
-    color: #ffffff;
-    border-top: 2px solid #007acc;
-}
-
-notebook > header > tabs > tab:hover:not(:checked) {
-    background-color: #2a2d2e;
-    color: #cccccc;
-}
-
-/* Tab close button */
-notebook > header > tabs > tab button {
+.xenon-sidebar > header.top > tabs > tab {
     background: transparent;
+    color: #999999;
+    border-radius: 0;
     border: none;
-    padding: 2px;
-    color: #969696;
-    min-width: 16px;
-    min-height: 16px;
+    border-bottom: 2px solid transparent;
+    padding: 6px 14px;
+    margin: 0;
+    min-width: 0;
+    font-size: 11px;
+    outline: none;
+    -gtk-outline-radius: 0;
 }
 
-notebook > header > tabs > tab button:hover {
-    background-color: #e81123;
+.xenon-sidebar > header.top > tabs > tab:checked {
     color: #ffffff;
-    border-radius: 3px;
+    border-bottom: 2px solid #007acc;
+    background: transparent;
 }
 
-/* Source view (editor) */
+.xenon-sidebar > header.top > tabs > tab:hover:not(:checked) {
+    color: #cccccc;
+    background: rgba(255,255,255,0.04);
+}
+
+/* =====================================================
+   SOURCE EDITOR (textview / GtkSourceView)
+   Do NOT force the textview background here — let the
+   source style scheme control the content area colors.
+   We only provide a fallback and set the gutter / caret.
+   ===================================================== */
+
 textview,
 textview.view {
     background-color: #1e1e1e;
@@ -108,12 +190,21 @@ textview.view {
     caret-color: #aeafad;
 }
 
-textview.view > .view {
-    background-color: #1e1e1e;
+/* Current-line highlight: GtkSourceView 3.22+ exposes this as a CSS node.
+   A subtle transparency-based color works consistently across all schemes. */
+textview.view .current-line,
+textview .current-line {
+    background-color: rgba(255, 255, 255, 0.05);
 }
 
-/* Line numbers gutter */
-textview.view .left-margin {
+/* Text selection */
+textview text selection {
+    background-color: #264f78;
+    color: #ffffff;
+}
+
+/* Line-number gutter */
+textview .left-margin {
     background-color: #1e1e1e;
     color: #858585;
 }
@@ -169,7 +260,6 @@ scrollbar slider:active {
     color: #ffffff;
 }
 
-/* Sidebar separator */
 .xenon-statusbar separator {
     background-color: rgba(255,255,255,0.2);
     min-width: 1px;
@@ -282,7 +372,7 @@ check:checked {
     border-color: #007acc;
 }
 
-/* List boxes (for command palette, quick open, etc.) */
+/* List boxes (command palette, quick open, etc.) */
 listbox {
     background-color: #252526;
     color: #d4d4d4;
@@ -302,12 +392,12 @@ listbox row:hover {
     background-color: #2a2d2e;
 }
 
-/* Scrolled window */
+/* Scrolled windows */
 scrolledwindow {
     background-color: #1e1e1e;
 }
 
-/* Terminal widget container */
+/* Terminal widget */
 .xenon-terminal {
     background-color: #1e1e1e;
     border-top: 1px solid #3c3c3c;
@@ -346,6 +436,16 @@ void ThemeManager::applyDarkTheme(Glib::RefPtr<Gdk::Screen> screen) {
     Gtk::StyleContext::add_provider_for_screen(
         screen, css_provider_,
         GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+}
+
+void ThemeManager::applyUIFont(const std::string& font_name) {
+    auto gtk_settings = Gtk::Settings::get_default();
+    if (!font_name.empty()) {
+        gtk_settings->property_gtk_font_name() = font_name;
+    } else {
+        // Restore system default by unsetting our override
+        gtk_settings->property_gtk_font_name().reset_value();
+    }
 }
 
 } // namespace xenon::ui

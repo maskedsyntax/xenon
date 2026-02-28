@@ -6,15 +6,16 @@
 namespace xenon::ui {
 
 struct EditorSettings {
-    std::string font_name   = "Monospace 11";
-    int tab_width           = 4;
-    bool spaces_for_tabs    = true;
-    bool show_line_numbers  = true;
-    bool highlight_line     = true;
-    bool word_wrap          = false;
-    bool auto_indent        = true;
-    bool show_right_margin  = true;
-    int right_margin_col    = 100;
+    std::string font_name    = "Monospace 11";
+    std::string ui_font_name = "";  // empty = system default
+    int tab_width            = 4;
+    bool spaces_for_tabs     = true;
+    bool show_line_numbers   = true;
+    bool highlight_line      = true;
+    bool word_wrap           = false;
+    bool auto_indent         = true;
+    bool show_right_margin   = true;
+    int right_margin_col     = 100;
     std::string color_scheme = "oblivion";
 };
 
@@ -34,7 +35,8 @@ private:
     ApplyCallback apply_cb_;
 
     Gtk::Grid grid_;
-    Gtk::FontButton font_btn_;
+    Gtk::FontButton font_btn_;       // editor font
+    Gtk::FontButton ui_font_btn_;    // UI font
     Gtk::SpinButton tab_spin_;
     Gtk::CheckButton spaces_check_{"Use spaces for tabs"};
     Gtk::CheckButton line_numbers_check_{"Show line numbers"};

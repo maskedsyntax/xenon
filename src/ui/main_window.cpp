@@ -93,6 +93,10 @@ void MainWindow::setupUI() {
 
     command_palette_ = std::make_unique<CommandPalette>(*this);
 
+    // Apply CSS identity classes for tab styling
+    notebook_.get_style_context()->add_class("xenon-notebook");
+    sidebar_notebook_.get_style_context()->add_class("xenon-sidebar");
+
     // Breadcrumb bar above the editor notebook
     auto* editor_area = Gtk::manage(new Gtk::Box(Gtk::ORIENTATION_VERTICAL));
     breadcrumb_bar_.set_size_request(-1, 28);
@@ -852,6 +856,9 @@ void MainWindow::onPreferences() {
 }
 
 void MainWindow::applySettingsToAllEditors() {
+    // Apply UI font application-wide
+    ThemeManager::applyUIFont(current_settings_.ui_font_name);
+
     for (int i = 0; i < notebook_.get_n_pages(); ++i) {
         auto* split = dynamic_cast<SplitPaneContainer*>(notebook_.get_nth_page(i));
         if (split) {
