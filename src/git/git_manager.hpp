@@ -1,8 +1,10 @@
 #pragma once
 
-#include <string>
+#include <QObject>
+#include <QString>
+#include <QStringList>
+#include <QProcess>
 #include <vector>
-#include <functional>
 
 #ifdef HAVE_LIBGIT2
 struct git_repository;
@@ -18,41 +20,35 @@ enum class DiffLineType {
 };
 
 struct DiffHunk {
-    int start_line;  // 0-based line in the new file
+    int start_line;
     int count;
     DiffLineType type;
 };
 
-class GitManager {
+class GitManager : public QObject {
+    Q_OBJECT
+
 public:
-    GitManager();
-    ~GitManager();
+    explicit GitManager(QObject* parent = nullptr);
+    ~GitManager() override;
 
-    // Set the working directory; returns true if it's a git repo
-    bool setWorkingDirectory(const std::string& path);
-
+    bool setWorkingDirectory(const QString& path);
     bool isGitRepo() const { return is_git_repo_; }
+    QString currentBranch() const { return branch_; }
 
-    // Current branch name (e.g. "main")
-    std::string currentBranch() const { return branch_; }
+    std::vector<DiffHunk> getFileDiff(const QString& filepath, const QString& fileContent) const;
+    QString statusSummary(const QString& filepath, const QString& fileContent) const;
 
-    // Diff hunks for a file (path relative to repo root or absolute)
-    std::vector<DiffHunk> getFileDiff(const std::string& filepath,
-                                      const std::string& fileContent) const;
-
-    // Short status string like "+3 ~2 -1"
-    std::string statusSummary(const std::string& filepath,
-                              const std::string& fileContent) const;
+signals:
+    void branchChanged(const QString& newBranch);
 
 private:
-    std::string working_dir_;
-    std::string branch_;
-    bool is_git_repo_ = false;
-
     void detectBranch();
+    QString runGitCommand(const QStringList& args) const;
 
-    // Fallback: run 'git' CLI when libgit2 is not available
-    std::string runGitCommand(const std::vector<std::string>& args) const;
+    QString working_dir_;
+    QString branch_;
+    bool is_git_repo_ = false;
 
 #ifdef HAVE_LIBGIT2
     ::git_repository* repo_ = nullptr;

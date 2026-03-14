@@ -3,9 +3,4 @@ add_library(xenon_lsp STATIC
     lsp_client.cpp
 )
 
-target_include_directories(xenon_lsp
-    PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/..
-)
-
-target_link_libraries(xenon_lsp PUBLIC pthread)
+target_link_libraries(xenon_lsp PUBLIC Qt6::Core Qt6::Network)

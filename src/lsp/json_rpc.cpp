@@ -10,7 +10,8 @@ namespace xenon::lsp {
 
 static void serializeString(std::ostringstream& oss, const std::string& s) {
     oss << '"';
-    for (unsigned char c : s) {
+    for (char signed_c : s) {
+        unsigned char c = static_cast<unsigned char>(signed_c);
         switch (c) {
             case '"':  oss << "\\\""; break;
             case '\\': oss << "\\\\"; break;

@@ -1,33 +1,26 @@
 #pragma once
 
-#include <gtkmm.h>
-#include <string>
-
-#ifdef HAVE_VTE
-#include <vte/vte.h>
-#endif
+#include <QPlainTextEdit>
+#include <QProcess>
 
 namespace xenon::ui {
 
-class TerminalWidget : public Gtk::Box {
-public:
-    TerminalWidget();
-    virtual ~TerminalWidget() = default;
+class TerminalWidget : public QPlainTextEdit {
+    Q_OBJECT
 
-    void setWorkingDirectory(const std::string& path);
-    void toggle();
-    bool isTerminalVisible() const { return terminal_visible_; }
+public:
+    explicit TerminalWidget(QWidget* parent = nullptr);
+    ~TerminalWidget() override;
+
+protected:
+    void keyPressEvent(QKeyEvent* event) override;
+
+private slots:
+    void onReadyRead();
+    void onProcessFinished(int exitCode, QProcess::ExitStatus exitStatus);
 
 private:
-    bool terminal_visible_ = false;
-    std::string working_directory_;
-
-#ifdef HAVE_VTE
-    Gtk::Widget* vte_widget_ = nullptr;
-    VteTerminal* vte_terminal_ = nullptr;
-
-    void spawnShell();
-#endif
+    QProcess process_;
 };
 
 } // namespace xenon::ui

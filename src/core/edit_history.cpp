@@ -11,7 +11,7 @@ void EditHistory::execute(std::unique_ptr<EditCommand> command) {
         return;
     }
 
-    commands_.erase(commands_.begin() + current_index_, commands_.end());
+    commands_.erase(commands_.begin() + static_cast<std::vector<std::unique_ptr<EditCommand>>::difference_type>(current_index_), commands_.end());
     command->execute();
     commands_.push_back(std::move(command));
     current_index_++;

@@ -1,36 +1,24 @@
+# Add the src directory to the include path for all subdirectories
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+
 add_subdirectory(core)
-add_subdirectory(features)
 add_subdirectory(services)
-add_subdirectory(lsp)
 add_subdirectory(git)
+add_subdirectory(lsp)
+add_subdirectory(features)
 add_subdirectory(ui)
 
-add_executable(xenon main.cpp)
+add_executable(xenon
+    main.cpp
+)
 
 target_link_libraries(xenon
     PRIVATE
-        xenon_ui
-        xenon_services
-        xenon_features
-        xenon_core
-        xenon_lsp
-        xenon_git
-        ${GTK_LIBRARIES}
-        ${GTKMM_LIBRARIES}
+    xenon_ui
+    xenon_features
+    xenon_lsp
+    xenon_git
+    xenon_core
+    xenon_services
+    Qt6::Widgets
 )
-
-if(GTKSOURCEVIEW_FOUND)
-    target_link_libraries(xenon PRIVATE ${GTKSOURCEVIEW_LIBRARIES})
-endif()
-
-if(GTKSOURCEVIEWMM_FOUND)
-    target_link_libraries(xenon PRIVATE ${GTKSOURCEVIEWMM_LIBRARIES})
-endif()
-
-if(VTE_FOUND)
-    target_link_libraries(xenon PRIVATE ${VTE_LIBRARIES})
-endif()
-
-if(LIBGIT2_FOUND)
-    target_link_libraries(xenon PRIVATE ${LIBGIT2_LIBRARIES})
-endif()

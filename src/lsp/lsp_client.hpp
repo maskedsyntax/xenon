@@ -1,102 +1,72 @@
 #pragma once
 
-#include <string>
+#include <QObject>
+#include <QProcess>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QJsonDocument>
 #include <functional>
 #include <memory>
-#include <thread>
-#include <mutex>
-#include <atomic>
 #include <unordered_map>
 #include <vector>
-#include "lsp/json_rpc.hpp"
 
 namespace xenon::lsp {
 
 struct Diagnostic {
-    int line = 0;       // 0-based
-    int col = 0;        // 0-based
+    int line = 0;
+    int col = 0;
     int endLine = 0;
     int endCol = 0;
-    std::string message;
-    int severity = 1;   // 1=Error 2=Warning 3=Info 4=Hint
+    QString message;
+    int severity = 1;
 };
 
 struct CompletionItem {
-    std::string label;
-    std::string detail;
-    std::string insertText;
+    QString label;
+    QString detail;
+    QString insertText;
     int kind = 0;
 };
 
-using DiagnosticsCallback = std::function<void(const std::string& uri,
-                                               std::vector<Diagnostic>)>;
-using CompletionCallback  = std::function<void(std::vector<CompletionItem>)>;
-using HoverCallback       = std::function<void(const std::string& content)>;
-using DefinitionCallback  = std::function<void(const std::string& uri, int line, int col)>;
+class LspClient : public QObject {
+    Q_OBJECT
 
-class LspClient {
 public:
-    LspClient();
-    ~LspClient();
+    explicit LspClient(QObject* parent = nullptr);
+    ~LspClient() override;
 
-    // Launch the language server process.
-    // command: e.g. {"clangd"} or {"rust-analyzer"}
-    bool start(const std::vector<std::string>& command,
-               const std::string& rootUri);
-
+    bool start(const QStringList& command, const QString& rootUri);
     void stop();
-    bool isRunning() const { return running_; }
+
+    bool isRunning() const { return process_.state() == QProcess::Running; }
     bool isInitialized() const { return initialized_; }
 
-    // LSP protocol methods
-    void didOpen(const std::string& uri, const std::string& languageId,
-                 const std::string& text, int version = 1);
-    void didChange(const std::string& uri, const std::string& text, int version);
-    void didClose(const std::string& uri);
-    void didSave(const std::string& uri);
+    // LSP Methods
+    void didOpen(const QString& uri, const QString& languageId, const QString& text, int version = 1);
+    void didChange(const QString& uri, const QString& text, int version);
+    void didClose(const QString& uri);
+    void didSave(const QString& uri);
 
-    void requestCompletion(const std::string& uri, int line, int col,
-                           CompletionCallback cb);
-    void requestHover(const std::string& uri, int line, int col,
-                      HoverCallback cb);
-    void requestDefinition(const std::string& uri, int line, int col,
-                           DefinitionCallback cb);
+signals:
+    void diagnosticsReceived(const QString& uri, const QList<Diagnostic>& diagnostics);
+    void completionReceived(int id, const QList<CompletionItem>& items);
+    void hoverReceived(int id, const QString& content);
+    void definitionReceived(int id, const QString& uri, int line, int col);
 
-    // Set diagnostics receiver (called from reader thread, dispatch to main)
-    void setDiagnosticsCallback(DiagnosticsCallback cb) {
-        diag_callback_ = std::move(cb);
-    }
+private slots:
+    void onReadyRead();
+    void onProcessError(QProcess::ProcessError error);
+    void onProcessFinished(int exitCode, QProcess::ExitStatus exitStatus);
 
 private:
-    void sendMessage(const std::string& json);
-    void readerThread();
-    void processMessage(const JsonValue& msg);
-    void processNotification(const std::string& method, const JsonValue& params);
-    void processResponse(int id, const JsonValue& result, const JsonValue& error);
+    void sendMessage(const QJsonObject& msg);
+    void processMessage(const QByteArray& data);
+    void handleNotification(const QString& method, const QJsonValue& params);
+    void handleResponse(int id, const QJsonValue& result, const QJsonValue& error);
 
-    std::string uriFromPath(const std::string& path);
-
-    // Process I/O
-    int server_stdin_fd_ = -1;
-    int server_stdout_fd_ = -1;
-    pid_t server_pid_ = -1;
-
-    std::thread reader_thread_;
-    std::atomic<bool> running_{false};
-
-    std::mutex send_mutex_;
-    std::mutex cb_mutex_;
-    std::atomic<int> next_id_{1};
-
-    // Pending response callbacks
-    std::unordered_map<int, CompletionCallback> completion_cbs_;
-    std::unordered_map<int, HoverCallback> hover_cbs_;
-    std::unordered_map<int, DefinitionCallback> def_cbs_;
-
-    DiagnosticsCallback diag_callback_;
-
-    // Read buffer
-    std::string read_buf_;
+    QProcess process_;
+    QByteArray read_buffer_;
+    int next_id_ = 1;
     bool initialized_ = false;
 };
 

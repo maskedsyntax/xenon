@@ -1,69 +1,48 @@
-# Xenon Text Editor
+# Xenon Text Editor (Qt 6 Edition)
 
-A modern, lightweight text and code editor built with C++17 and GTK 3. Xenon combines the simplicity of Kate with the user experience of Visual Studio Code.
+A modern, lightweight, and fast text editor inspired by Zed and VS Code, built with C++17 and Qt 6.
 
 ## Features
 
-Core Editing
-- Syntax highlighting for 100+ languages via GtkSourceView 3.0
-- Search and replace with regular expression support
-- Undo and redo operations
-
-User Interface
-- Tabbed multi-file editing
-- Split pane editing (horizontal and vertical)
-- File explorer sidebar with directory tree
-- Quick file opening with fuzzy search (Ctrl+P)
-- Light and dark themes
-
-Advanced Features
-- Cross-platform support (Linux, Windows, macOS)
+- **Native macOS Look:** Unified title and toolbar support.
+- **Zed-like Layout:** Vertical Activity Bar and collapsible Sidebar.
+- **Tabbed Editor:** High-performance code editor with line numbers.
+- **Syntax Highlighting:** Initial support for C++ and general code.
+- **Integrated Terminal:** Real-time shell integration.
+- **Command Palette:** Quick access to commands via `Cmd+Shift+P`.
+- **Git Integration:** Displays current branch in the status bar.
+- **LSP Ready:** Core infrastructure for Language Server Protocol.
 
 ## Requirements
 
-- C++17 compatible compiler (GCC 7+, Clang 6+, MSVC 2019+)
-- CMake 3.10 or later
-- GTK 3.22 or later
-- GtkSourceView 3.0
-- VTE 2.91
-- libgit2
+- **C++17 Compiler**
+- **Qt 6.2+** (Widgets, Gui, Core, Network)
+- **CMake 3.16+**
+- **LibGit2** (Optional but recommended)
 
-## Installation
-
-### Ubuntu/Debian
+## Installation (macOS)
 
 ```bash
-sudo apt-get install \
-  libgtk-3-dev \
-  libgtksourceview-3.0-dev \
-  libvte-2.91-dev \
-  libgtkmm-3.0-dev \
-  libgtksourceviewmm-3.0-dev \
-  libgit2-dev \
-  pkg-config
+brew install qt cmake libgit2
 ```
 
 ## Building
 
 ```bash
-mkdir build
-cd build
+mkdir build && cd build
 cmake ..
-make
+make -j$(sysctl -n hw.ncpu)
 ```
-
-The executable will be created at `build/bin/xenon`.
 
 ## Running
 
 ```bash
-./build/bin/xenon
+# macOS Bundle
+open bin/xenon.app
+
+# Linux/Windows
+./bin/xenon
 ```
 
 ## License
-
-MIT License
-
-## Development Status
-
-Active development. Implementing core features and establishing foundation for future extensions.
+MIT

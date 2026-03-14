@@ -1,121 +1,59 @@
 #pragma once
 
-#include <gtkmm.h>
+#include <QMainWindow>
+#include <QStackedWidget>
+#include <QSplitter>
+#include <QTabWidget>
+#include <QStatusBar>
+#include <QToolBar>
+#include <QLabel>
 #include <memory>
-#include <unordered_map>
-#include "ui/split_pane_container.hpp"
-#include "ui/quick_open_dialog.hpp"
-#include "ui/search_replace_dialog.hpp"
+
 #include "ui/file_explorer.hpp"
+#include "ui/editor_widget.hpp"
 #include "ui/terminal_widget.hpp"
-#include "ui/status_bar.hpp"
 #include "ui/command_palette.hpp"
-#include "ui/search_panel.hpp"
-#include "ui/breadcrumb_bar.hpp"
-#include "ui/problems_panel.hpp"
-#include "ui/settings_dialog.hpp"
-#include "lsp/lsp_client.hpp"
 #include "git/git_manager.hpp"
 
 namespace xenon::ui {
 
-class MainWindow : public Gtk::ApplicationWindow {
+class MainWindow : public QMainWindow {
+    Q_OBJECT
+
 public:
-    explicit MainWindow(Glib::RefPtr<Gtk::Application> app);
-    virtual ~MainWindow() = default;
+    explicit MainWindow(QWidget* parent = nullptr);
+    ~MainWindow() override = default;
 
-protected:
-    bool on_delete_event(GdkEventAny* /* any_event */) override;
-
-private:
-    Glib::RefPtr<Gtk::Application> app_;
-    Glib::RefPtr<Gtk::AccelGroup> accel_group_;
-    Gtk::Box main_box_{Gtk::ORIENTATION_VERTICAL};
-    Gtk::Paned main_paned_{Gtk::ORIENTATION_HORIZONTAL};
-    Gtk::Box content_box_{Gtk::ORIENTATION_HORIZONTAL};
-    Gtk::Paned content_vpaned_{Gtk::ORIENTATION_VERTICAL};
-    Gtk::MenuBar menubar_;
-    Gtk::Notebook notebook_;
-    StatusBar status_bar_;
-    std::unique_ptr<SearchReplaceDialog> search_dialog_;
-    std::unique_ptr<QuickOpenDialog> quick_open_dialog_;
-    std::unique_ptr<FileExplorer> file_explorer_;
-    std::unique_ptr<TerminalWidget> terminal_widget_;
-    std::unique_ptr<CommandPalette> command_palette_;
-    std::unique_ptr<SearchPanel> search_panel_;
-    std::unique_ptr<ProblemsPanel> problems_panel_;
-    std::unique_ptr<SettingsDialog> settings_dialog_;
-    BreadcrumbBar breadcrumb_bar_;
-    Gtk::Notebook sidebar_notebook_;
-    EditorSettings current_settings_;
-    std::string working_directory_;
-
-    // LSP clients keyed by language server command (e.g. "clangd")
-    std::unordered_map<std::string, std::shared_ptr<xenon::lsp::LspClient>> lsp_clients_;
-
-    // Git
-    std::shared_ptr<xenon::git::GitManager> git_manager_;
-
-    std::shared_ptr<xenon::lsp::LspClient> getLspClientForEditor(EditorWidget* editor);
-    void startLspServer(const std::string& command, const std::string& langId);
-
-    void setupMenuBar();
-    void setupUI();
-    void setupCommands();
-    void createNewTab();
-    Gtk::Widget* createTabLabel(const std::string& title, Gtk::Widget* page);
-    void closeTab(Gtk::Widget* page);
-    SplitPaneContainer* getCurrentSplitPane();
-    EditorWidget* getActiveEditor();
-    void updateStatusBar();
-    void connectEditorSignals(EditorWidget* editor);
-    void updateTabLabel(const std::string& title);
-    void markTabModified(bool modified);
-
+private slots:
     void onFileNew();
-    void onFileOpen();
-    void onOpenFolder();
+    void onFileOpenDialog();
     void onFileSave();
     void onFileSaveAs();
-    void onFileCloseTab();
-    void onFileQuit();
-    void onEditFind();
-    void onEditFindReplace();
-    void onFindNext();
-    void onFindPrevious();
-    void onReplace();
-    void onReplaceAll();
-    void onQuickOpen();
+    void onEditUndo();
+    void onEditRedo();
+    void onFileOpen(const QString& path);
+    void onEditorTabClosed(int index);
+    void updateGitBranch(const QString& branch);
     void onCommandPalette();
-    void onSplitHorizontal();
-    void onSplitVertical();
-    void onSelectLanguage();
-    void onToggleTerminal();
-    void onToggleMinimap();
-    void onToggleSidebar();
-    void onGlobalSearch();
-    void onPreferences();
-    void applySettingsToAllEditors();
-    void onExplorerFileActivated(const std::string& path);
-    void onZoomIn();
-    void onZoomOut();
-    void onZoomReset();
-    void onUndo();
-    void onRedo();
-    void onToggleZenMode();
-    void onToggleLineComment();
-    void onToggleBlockComment();
-    void addToRecentFiles(const std::string& path);
-    void rebuildRecentFilesMenu();
-    bool zen_mode_ = false;
-    Gtk::Menu* recent_menu_ = nullptr;
-    void onGotoDefinition();
-    void onTriggerCompletion();
-    void openFileAtLine(const std::string& path, int line, int col);
-    void onSelectNextOccurrence();
-    void onFoldAtCursor();
-    void onUnfoldAtCursor();
-    void onUnfoldAll();
+
+private:
+    void setupUI();
+    void setupMenus();
+    void setupActivityBar();
+    void setupSidebar();
+    void createNewEditor(const QString& path, const QString& content);
+
+    QToolBar* activity_bar_;
+    QStackedWidget* sidebar_stack_;
+    QSplitter* main_splitter_;
+    QSplitter* content_splitter_;
+    QTabWidget* editor_tabs_;
+    FileExplorer* file_explorer_;
+    TerminalWidget* terminal_widget_;
+    CommandPalette* command_palette_;
+    
+    QLabel* branch_label_;
+    std::unique_ptr<xenon::git::GitManager> git_manager_;
 };
 
 } // namespace xenon::ui

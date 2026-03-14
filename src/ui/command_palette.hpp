@@ -1,42 +1,31 @@
 #pragma once
 
-#include <gtkmm.h>
-#include <functional>
-#include <string>
-#include <vector>
+#include <QDialog>
+#include <QLineEdit>
+#include <QListWidget>
+#include <QVBoxLayout>
 
 namespace xenon::ui {
 
-struct Command {
-    std::string name;
-    std::string shortcut;
-    std::function<void()> action;
-};
+class CommandPalette : public QDialog {
+    Q_OBJECT
 
-class CommandPalette : public Gtk::Dialog {
 public:
-    explicit CommandPalette(Gtk::Window& parent);
-    virtual ~CommandPalette() = default;
+    explicit CommandPalette(QWidget* parent = nullptr);
+    ~CommandPalette() override = default;
 
-    void addCommand(const std::string& name, const std::string& shortcut,
-                    std::function<void()> action);
-    void clearCommands();
-    void show();
+    void showPalette();
+
+protected:
+    bool eventFilter(QObject* obj, QEvent* event) override;
+
+private slots:
+    void onTextChanged(const QString& text);
+    void onItemSelected(QListWidgetItem* item);
 
 private:
-    std::vector<Command> commands_;
-    std::vector<Command*> filtered_;
-
-    Gtk::Entry search_entry_;
-    Gtk::ScrolledWindow scroll_;
-    Gtk::ListBox list_box_;
-
-    void onSearchChanged();
-    void filterCommands(const std::string& query);
-    void rebuildList();
-    void onRowActivated(Gtk::ListBoxRow* row);
-
-    static bool fuzzyMatch(const std::string& pattern, const std::string& text);
+    QLineEdit* search_edit_;
+    QListWidget* list_widget_;
 };
 
 } // namespace xenon::ui

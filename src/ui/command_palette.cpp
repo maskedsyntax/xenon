@@ -1,189 +1,91 @@
 #include "ui/command_palette.hpp"
-#include <algorithm>
-#include <cctype>
+#include <QKeyEvent>
+#include <QApplication>
+#include <QScreen>
 
 namespace xenon::ui {
 
-CommandPalette::CommandPalette(Gtk::Window& parent)
-    : Gtk::Dialog("Command Palette", parent, true) {
+CommandPalette::CommandPalette(QWidget* parent)
+    : QDialog(parent, Qt::FramelessWindowHint | Qt::Popup) {
+    
+    setFixedWidth(600);
+    setStyleSheet(
+        "QDialog { background-color: #252526; border: 1px solid #454545; border-radius: 6px; }"
+        "QLineEdit { background-color: #3c3c3c; color: #ffffff; border: none; padding: 10px; font-size: 14pt; border-radius: 4px; margin: 5px; }"
+        "QListWidget { background-color: transparent; border: none; color: #cccccc; font-size: 12pt; outline: none; }"
+        "QListWidget::item { padding: 10px; border-bottom: 1px solid #2d2d2d; }"
+        "QListWidget::item:selected { background-color: #094771; color: #ffffff; }"
+    );
 
-    set_default_size(520, 400);
-    set_border_width(0);
+    auto* layout = new QVBoxLayout(this);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(0);
 
-    auto* content = get_content_area();
-    content->set_spacing(0);
+    search_edit_ = new QLineEdit(this);
+    search_edit_->setPlaceholderText("Type a command...");
+    layout->addWidget(search_edit_);
 
-    // Search entry at top
-    search_entry_.set_placeholder_text("Type a command...");
-    search_entry_.set_margin_start(8);
-    search_entry_.set_margin_end(8);
-    search_entry_.set_margin_top(8);
-    search_entry_.set_margin_bottom(8);
-    search_entry_.signal_changed().connect(
-        sigc::mem_fun(*this, &CommandPalette::onSearchChanged));
+    list_widget_ = new QListWidget(this);
+    list_widget_->setMinimumHeight(300);
+    layout->addWidget(list_widget_);
 
-    // Activate on Enter
-    search_entry_.signal_activate().connect([this]() {
-        auto* row = list_box_.get_selected_row();
-        if (!row) {
-            // Select first visible row if none selected
-            row = list_box_.get_row_at_index(0);
-        }
-        if (row) {
-            onRowActivated(row);
-        }
-    });
+    // Initial commands
+    QStringList commands = {"File: New File", "File: Open File", "File: Save", "View: Toggle Sidebar", "View: Toggle Terminal", "Git: Pull", "Git: Push"};
+    list_widget_->addItems(commands);
+    list_widget_->setCurrentRow(0);
 
-    content->pack_start(search_entry_, false, false);
+    connect(search_edit_, &QLineEdit::textChanged, this, &CommandPalette::onTextChanged);
+    connect(list_widget_, &QListWidget::itemDoubleClicked, this, &CommandPalette::onItemSelected);
+    
+    search_edit_->installEventFilter(this);
+}
 
-    auto sep = Gtk::manage(new Gtk::Separator(Gtk::ORIENTATION_HORIZONTAL));
-    content->pack_start(*sep, false, false);
+void CommandPalette::showPalette() {
+    search_edit_->clear();
+    
+    // Position in top-center of parent or screen
+    QWidget* p = parentWidget();
+    if (p) {
+        move(p->geometry().center().x() - width() / 2, p->geometry().top() + 50);
+    }
+    
+    show();
+    search_edit_->setFocus();
+}
 
-    // Scrollable list of commands
-    scroll_.set_policy(Gtk::POLICY_NEVER, Gtk::POLICY_AUTOMATIC);
-    scroll_.add(list_box_);
-    scroll_.set_min_content_height(320);
-
-    list_box_.set_selection_mode(Gtk::SELECTION_SINGLE);
-    list_box_.signal_row_activated().connect(
-        sigc::mem_fun(*this, &CommandPalette::onRowActivated));
-
-    content->pack_start(scroll_, true, true);
-
-    // Navigate with up/down arrow keys in search entry
-    search_entry_.signal_key_press_event().connect([this](GdkEventKey* event) -> bool {
-        if (event->keyval == GDK_KEY_Down) {
-            auto* sel = list_box_.get_selected_row();
-            int next = sel ? sel->get_index() + 1 : 0;
-            auto* row = list_box_.get_row_at_index(next);
-            if (row) {
-                list_box_.select_row(*row);
-                row->grab_focus();
-                search_entry_.grab_focus();
-            }
+bool CommandPalette::eventFilter(QObject* obj, QEvent* event) {
+    if (obj == search_edit_ && event->type() == QEvent::KeyPress) {
+        auto* keyEvent = static_cast<QKeyEvent*>(event);
+        if (keyEvent->key() == Qt::Key_Down) {
+            list_widget_->setCurrentRow((list_widget_->currentRow() + 1) % list_widget_->count());
+            return true;
+        } else if (keyEvent->key() == Qt::Key_Up) {
+            list_widget_->setCurrentRow((list_widget_->currentRow() - 1 + list_widget_->count()) % list_widget_->count());
+            return true;
+        } else if (keyEvent->key() == Qt::Key_Return || keyEvent->key() == Qt::Key_Enter) {
+            onItemSelected(list_widget_->currentItem());
+            return true;
+        } else if (keyEvent->key() == Qt::Key_Escape) {
+            hide();
             return true;
         }
-        if (event->keyval == GDK_KEY_Up) {
-            auto* sel = list_box_.get_selected_row();
-            if (sel && sel->get_index() > 0) {
-                auto* row = list_box_.get_row_at_index(sel->get_index() - 1);
-                if (row) {
-                    list_box_.select_row(*row);
-                    search_entry_.grab_focus();
-                }
-            }
-            return true;
-        }
-        if (event->keyval == GDK_KEY_Escape) {
-            response(Gtk::RESPONSE_CANCEL);
-            return true;
-        }
-        return false;
-    }, false);
-
-    content->show_all();
-}
-
-void CommandPalette::addCommand(const std::string& name, const std::string& shortcut,
-                                 std::function<void()> action) {
-    commands_.push_back({name, shortcut, std::move(action)});
-}
-
-void CommandPalette::clearCommands() {
-    commands_.clear();
-    filtered_.clear();
-}
-
-void CommandPalette::show() {
-    search_entry_.set_text("");
-    filterCommands("");
-    rebuildList();
-    Gtk::Dialog::show();
-    search_entry_.grab_focus();
-}
-
-void CommandPalette::onSearchChanged() {
-    filterCommands(search_entry_.get_text().raw());
-    rebuildList();
-}
-
-void CommandPalette::filterCommands(const std::string& query) {
-    filtered_.clear();
-    for (auto& cmd : commands_) {
-        if (query.empty() || fuzzyMatch(query, cmd.name)) {
-            filtered_.push_back(&cmd);
-        }
     }
+    return QDialog::eventFilter(obj, event);
 }
 
-void CommandPalette::rebuildList() {
-    // Remove all existing rows
-    for (auto* child : list_box_.get_children()) {
-        list_box_.remove(*child);
+void CommandPalette::onTextChanged(const QString& text) {
+    for (int i = 0; i < list_widget_->count(); ++i) {
+        auto* item = list_widget_->item(i);
+        item->setHidden(!item->text().contains(text, Qt::CaseInsensitive));
     }
-
-    for (auto* cmd : filtered_) {
-        auto* row = Gtk::manage(new Gtk::ListBoxRow());
-        auto* box = Gtk::manage(new Gtk::Box(Gtk::ORIENTATION_HORIZONTAL, 8));
-        box->set_margin_start(12);
-        box->set_margin_end(12);
-        box->set_margin_top(8);
-        box->set_margin_bottom(8);
-
-        auto* name_label = Gtk::manage(new Gtk::Label(cmd->name));
-        name_label->set_halign(Gtk::ALIGN_START);
-        name_label->set_hexpand(true);
-
-        auto* shortcut_label = Gtk::manage(new Gtk::Label(cmd->shortcut));
-        shortcut_label->set_halign(Gtk::ALIGN_END);
-        shortcut_label->get_style_context()->add_class("dim-label");
-
-        box->pack_start(*name_label, true, true);
-        box->pack_end(*shortcut_label, false, false);
-
-        row->add(*box);
-        row->show_all();
-        list_box_.append(*row);
-    }
-
-    // Select first row
-    auto* first = list_box_.get_row_at_index(0);
-    if (first) {
-        list_box_.select_row(*first);
-    }
+    list_widget_->setCurrentRow(0);
 }
 
-void CommandPalette::onRowActivated(Gtk::ListBoxRow* row) {
-    if (!row) return;
-    int idx = row->get_index();
-    if (idx >= 0 && idx < static_cast<int>(filtered_.size())) {
-        auto action = filtered_[static_cast<size_t>(idx)]->action;
-        response(Gtk::RESPONSE_OK);
+void CommandPalette::onItemSelected(QListWidgetItem* item) {
+    if (item) {
+        // TODO: Execute command
         hide();
-        if (action) {
-            action();
-        }
     }
-}
-
-bool CommandPalette::fuzzyMatch(const std::string& pattern, const std::string& text) {
-    if (pattern.empty()) return true;
-
-    std::string p_lower = pattern;
-    std::string t_lower = text;
-    std::transform(p_lower.begin(), p_lower.end(), p_lower.begin(),
-                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-    std::transform(t_lower.begin(), t_lower.end(), t_lower.begin(),
-                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-
-    // Simple subsequence match
-    size_t pi = 0;
-    for (size_t ti = 0; ti < t_lower.size() && pi < p_lower.size(); ++ti) {
-        if (t_lower[ti] == p_lower[pi]) {
-            ++pi;
-        }
-    }
-    return pi == p_lower.size();
 }
 
 } // namespace xenon::ui
