@@ -47,6 +47,9 @@ public:
     void didClose(const QString& uri);
     void didSave(const QString& uri);
 
+    int completion(const QString& uri, int line, int col);
+    int definition(const QString& uri, int line, int col);
+
 signals:
     void diagnosticsReceived(const QString& uri, const QList<Diagnostic>& diagnostics);
     void completionReceived(int id, const QList<CompletionItem>& items);
@@ -68,6 +71,13 @@ private:
     QByteArray read_buffer_;
     int next_id_ = 1;
     bool initialized_ = false;
+
+    enum class RequestType {
+        Initialize,
+        Completion,
+        Definition
+    };
+    std::unordered_map<int, RequestType> pending_requests_;
 };
 
 } // namespace xenon::lsp

@@ -15,7 +15,10 @@
 #include "ui/terminal_widget.hpp"
 #include "ui/command_palette.hpp"
 #include "ui/find_replace_widget.hpp"
+#include "ui/quick_open_dialog.hpp"
+#include "ui/completion_widget.hpp"
 #include "git/git_manager.hpp"
+#include "lsp/lsp_client.hpp"
 
 namespace xenon::ui {
 
@@ -42,10 +45,17 @@ private slots:
     void onFindPrevious();
     void onReplace();
     void onReplaceAll();
+    void onQuickOpen();
     void onFileOpen(const QString& path);
     void onEditorTabClosed(int index);
     void updateGitBranch(const QString& branch);
     void onCommandPalette();
+
+    // LSP slots
+    void onCompletionRequested();
+    void onCompletionReceived(int id, const QList<xenon::lsp::CompletionItem>& items);
+    void onCompletionSelected(const QString& text);
+    void onDefinitionReceived(int id, const QString& uri, int line, int col);
 
 private:
     void setupUI();
@@ -63,9 +73,12 @@ private:
     TerminalWidget* terminal_widget_;
     CommandPalette* command_palette_;
     FindReplaceWidget* find_replace_widget_;
+    QuickOpenDialog* quick_open_dialog_;
+    CompletionWidget* completion_widget_;
     
     QLabel* branch_label_;
     std::unique_ptr<xenon::git::GitManager> git_manager_;
+    std::unique_ptr<xenon::lsp::LspClient> lsp_client_;
 };
 
 } // namespace xenon::ui

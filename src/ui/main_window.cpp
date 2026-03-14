@@ -9,6 +9,8 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QDir>
+#include <QUrl>
+#include <unordered_map>
 
 #include <QMessageBox>
 
@@ -24,6 +26,10 @@ MainWindow::MainWindow(QWidget* parent)
 
     git_manager_ = std::make_unique<xenon::git::GitManager>(this);
     connect(git_manager_.get(), &xenon::git::GitManager::branchChanged, this, &MainWindow::updateGitBranch);
+
+    lsp_client_ = std::make_unique<xenon::lsp::LspClient>(this);
+    // Start clangd by default if available
+    lsp_client_->start({"clangd"}, QDir::currentPath());
 
 #ifdef Q_OS_MAC
     // Modern macOS look: unified title and toolbar
@@ -98,6 +104,13 @@ void MainWindow::setupUI() {
     main_layout->addWidget(main_splitter_);
 
     command_palette_ = new CommandPalette(this);
+    quick_open_dialog_ = new QuickOpenDialog(this);
+    connect(quick_open_dialog_, &QuickOpenDialog::fileSelected, this, &MainWindow::onFileOpen);
+
+    completion_widget_ = new CompletionWidget(this);
+    connect(lsp_client_.get(), &xenon::lsp::LspClient::completionReceived, this, &MainWindow::onCompletionReceived);
+    connect(lsp_client_.get(), &xenon::lsp::LspClient::definitionReceived, this, &MainWindow::onDefinitionReceived);
+    connect(completion_widget_, &CompletionWidget::completionSelected, this, &MainWindow::onCompletionSelected);
 
     branch_label_ = new QLabel(this);
     branch_label_->setStyleSheet("padding-left: 10px; color: white;");
@@ -307,6 +320,9 @@ void MainWindow::onFileSave() {
         QTextStream out(&file);
         out << editor->toPlainText();
         editor->document()->setModified(false);
+        if (lsp_client_->isInitialized()) {
+            lsp_client_->didSave(QUrl::fromLocalFile(path).toString());
+        }
         statusBar()->showMessage("Saved: " + path, 3000);
     }
 }
@@ -327,6 +343,9 @@ void MainWindow::onFileSaveAs() {
             editor_tabs_->setTabText(index, fi.fileName());
             editor_tabs_->setTabToolTip(index, fileName);
             editor->document()->setModified(false);
+            if (lsp_client_->isInitialized()) {
+                lsp_client_->didSave(QUrl::fromLocalFile(fileName).toString());
+            }
             statusBar()->showMessage("Saved: " + fileName, 3000);
         }
     }
@@ -371,6 +390,20 @@ void MainWindow::createNewEditor(const QString& path, const QString& content) {
     editor_tabs_->setTabToolTip(index, path);
     editor_tabs_->setCurrentIndex(index);
 
+    // LSP: notify file open
+    if (lsp_client_->isInitialized()) {
+        lsp_client_->didOpen(QUrl::fromLocalFile(path).toString(), "cpp", content);
+    }
+
+    static std::unordered_map<CodeEditor*, int> versions;
+    versions[editor] = 1;
+
+    connect(editor->document(), &QTextDocument::contentsChanged, [this, editor, path]() {
+        if (lsp_client_->isInitialized()) {
+            lsp_client_->didChange(QUrl::fromLocalFile(path).toString(), editor->toPlainText(), ++versions[editor]);
+        }
+    });
+
     connect(editor->document(), &QTextDocument::modificationChanged, [this, editor](bool changed) {
         int idx = editor_tabs_->indexOf(editor);
         if (idx == -1) return;
@@ -400,6 +433,11 @@ void MainWindow::onEditorTabClosed(int index) {
     }
 
     auto* widget = editor_tabs_->widget(index);
+    if (qobject_cast<CodeEditor*>(widget)) {
+        if (lsp_client_->isInitialized()) {
+            lsp_client_->didClose(QUrl::fromLocalFile(editor_tabs_->tabToolTip(index)).toString());
+        }
+    }
     editor_tabs_->removeTab(index);
     delete widget;
 }
@@ -420,10 +458,66 @@ void MainWindow::onCommandPalette() {
     command_palette_->showPalette();
 }
 
+void MainWindow::onQuickOpen() {
+    quick_open_dialog_->showDialog(QDir::currentPath());
+}
+
+void MainWindow::onCompletionRequested() {
+    auto* editor = qobject_cast<CodeEditor*>(editor_tabs_->currentWidget());
+    if (!editor || !lsp_client_->isInitialized()) return;
+
+    QString path = editor_tabs_->tabToolTip(editor_tabs_->currentIndex());
+    QTextCursor cursor = editor->textCursor();
+    
+    lsp_client_->completion(
+        QUrl::fromLocalFile(path).toString(),
+        cursor.blockNumber(),
+        cursor.columnNumber()
+    );
+}
+
+void MainWindow::onCompletionReceived(int id, const QList<xenon::lsp::CompletionItem>& items) {
+    Q_UNUSED(id);
+    auto* editor = qobject_cast<CodeEditor*>(editor_tabs_->currentWidget());
+    if (!editor) return;
+
+    // Show completion widget at cursor position
+    QPoint pos = editor->mapToGlobal(editor->cursorRect().bottomRight());
+    completion_widget_->showCompletions(pos, items);
+}
+
+void MainWindow::onCompletionSelected(const QString& text) {
+    auto* editor = qobject_cast<CodeEditor*>(editor_tabs_->currentWidget());
+    if (!editor) return;
+
+    QTextCursor cursor = editor->textCursor();
+    // Simple implementation: just insert the text
+    // A better one would replace the current word
+    cursor.insertText(text);
+    editor->setTextCursor(cursor);
+}
+
+void MainWindow::onDefinitionReceived(int id, const QString& uri, int line, int col) {
+    Q_UNUSED(id);
+    QString path = QUrl(uri).toLocalFile();
+    onFileOpen(path);
+    
+    auto* editor = qobject_cast<CodeEditor*>(editor_tabs_->currentWidget());
+    if (editor) {
+        QTextCursor cursor = editor->textCursor();
+        cursor.movePosition(QTextCursor::Start);
+        for (int i = 0; i < line; ++i) cursor.movePosition(QTextCursor::Down);
+        for (int i = 0; i < col; ++i) cursor.movePosition(QTextCursor::Right);
+        editor->setTextCursor(cursor);
+        editor->ensureCursorVisible();
+    }
+}
+
 void MainWindow::setupMenus() {
     auto* file_menu = menuBar()->addMenu("&File");
     file_menu->addAction("&New File", QKeySequence::New, this, &MainWindow::onFileNew);
     file_menu->addAction("&Open...", QKeySequence::Open, this, &MainWindow::onFileOpenDialog);
+    file_menu->addAction("Quick Open", QKeySequence("Ctrl+P"), this, &MainWindow::onQuickOpen);
     file_menu->addSeparator();
     file_menu->addAction("&Save", QKeySequence::Save, this, &MainWindow::onFileSave);
     file_menu->addAction("Save &As...", QKeySequence::SaveAs, this, &MainWindow::onFileSaveAs);
@@ -436,6 +530,16 @@ void MainWindow::setupMenus() {
     edit_menu->addSeparator();
     edit_menu->addAction("&Find", QKeySequence::Find, this, &MainWindow::onEditFind);
     edit_menu->addAction("&Replace", QKeySequence::Replace, this, &MainWindow::onEditReplace);
+    edit_menu->addSeparator();
+    edit_menu->addAction("Go to Definition", QKeySequence(Qt::Key_F12), [this]() {
+        auto* editor = qobject_cast<CodeEditor*>(editor_tabs_->currentWidget());
+        if (editor && lsp_client_->isInitialized()) {
+            QString path = editor_tabs_->tabToolTip(editor_tabs_->currentIndex());
+            QTextCursor cursor = editor->textCursor();
+            lsp_client_->definition(QUrl::fromLocalFile(path).toString(), cursor.blockNumber(), cursor.columnNumber());
+        }
+    });
+    edit_menu->addAction("Show Completions", QKeySequence("Ctrl+Space"), this, &MainWindow::onCompletionRequested);
 
     auto* view_menu = menuBar()->addMenu("&View");
     view_menu->addAction("Command Palette", QKeySequence("Ctrl+Shift+P"), this, &MainWindow::onCommandPalette);

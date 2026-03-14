@@ -7,6 +7,8 @@ add_library(xenon_ui STATIC
     command_palette.cpp
     style_manager.cpp
     find_replace_widget.cpp
+    quick_open_dialog.cpp
+    completion_widget.cpp
 )
 
 target_link_libraries(xenon_ui 

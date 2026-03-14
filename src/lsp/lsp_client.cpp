@@ -29,8 +29,10 @@ bool LspClient::start(const QStringList& command, const QString& rootUri) {
     params["capabilities"] = QJsonObject(); // Basic empty capabilities
 
     QJsonObject init_msg;
+    int id = next_id_++;
+    pending_requests_[id] = RequestType::Initialize;
     init_msg["jsonrpc"] = "2.0";
-    init_msg["id"] = next_id_++;
+    init_msg["id"] = id;
     init_msg["method"] = "initialize";
     init_msg["params"] = params;
 
@@ -111,13 +113,90 @@ void LspClient::handleNotification(const QString& method, const QJsonValue& para
 }
 
 void LspClient::handleResponse(int id, const QJsonValue& result, const QJsonValue& error) {
-    Q_UNUSED(id);
-    Q_UNUSED(result);
+    if (pending_requests_.find(id) == pending_requests_.end()) return;
+    RequestType type = pending_requests_[id];
+    pending_requests_.erase(id);
+
     if (!error.isNull()) {
-        qDebug() << "LSP Error:" << error;
+        qDebug() << "LSP Error (id" << id << "):" << error;
         return;
     }
-    // Handle responses for completion, definition etc.
+
+    if (type == RequestType::Initialize) {
+        initialized_ = true;
+        sendMessage(QJsonObject{{"jsonrpc", "2.0"}, {"method", "initialized"}, {"params", QJsonObject()}});
+    } else if (type == RequestType::Completion) {
+        QList<CompletionItem> items;
+        QJsonArray list;
+        if (result.isObject()) {
+            list = result.toObject()["items"].toArray();
+        } else if (result.isArray()) {
+            list = result.toArray();
+        }
+
+        for (const auto& v : list) {
+            QJsonObject obj = v.toObject();
+            CompletionItem item;
+            item.label = obj["label"].toString();
+            item.detail = obj["detail"].toString();
+            item.insertText = obj["insertText"].toString();
+            item.kind = obj["kind"].toInt();
+            items.append(item);
+        }
+        emit completionReceived(id, items);
+    } else if (type == RequestType::Definition) {
+        QJsonObject loc;
+        if (result.isArray()) {
+            QJsonArray arr = result.toArray();
+            if (!arr.isEmpty()) loc = arr[0].toObject();
+        } else if (result.isObject()) {
+            loc = result.toObject();
+        }
+
+        if (!loc.isEmpty()) {
+            QString uri = loc["uri"].toString();
+            QJsonObject range = loc["range"].toObject();
+            int line = range["start"].toObject()["line"].toInt();
+            int col = range["start"].toObject()["character"].toInt();
+            emit definitionReceived(id, uri, line, col);
+        }
+    }
+}
+
+int LspClient::completion(const QString& uri, int line, int col) {
+    int id = next_id_++;
+    pending_requests_[id] = RequestType::Completion;
+
+    QJsonObject params;
+    params["textDocument"] = QJsonObject{{"uri", uri}};
+    params["position"] = QJsonObject{{"line", line}, {"character", col}};
+
+    QJsonObject msg;
+    msg["jsonrpc"] = "2.0";
+    msg["id"] = id;
+    msg["method"] = "textDocument/completion";
+    msg["params"] = params;
+
+    sendMessage(msg);
+    return id;
+}
+
+int LspClient::definition(const QString& uri, int line, int col) {
+    int id = next_id_++;
+    pending_requests_[id] = RequestType::Definition;
+
+    QJsonObject params;
+    params["textDocument"] = QJsonObject{{"uri", uri}};
+    params["position"] = QJsonObject{{"line", line}, {"character", col}};
+
+    QJsonObject msg;
+    msg["jsonrpc"] = "2.0";
+    msg["id"] = id;
+    msg["method"] = "textDocument/definition";
+    msg["params"] = params;
+
+    sendMessage(msg);
+    return id;
 }
 
 void LspClient::didOpen(const QString& uri, const QString& languageId, const QString& text, int version) {
