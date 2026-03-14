@@ -6,7 +6,7 @@ namespace xenon::ui {
 CompletionWidget::CompletionWidget(QWidget* parent)
     : QListWidget(parent) {
     
-    setWindowFlags(Qt::ToolTip | Qt::FramelessWindowHint);
+    setWindowFlags(Qt::Popup | Qt::FramelessWindowHint);
     setFixedWidth(300);
     setMaximumHeight(200);
     setStyleSheet(

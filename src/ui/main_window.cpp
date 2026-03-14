@@ -202,7 +202,7 @@ void MainWindow::onFindNext() {
     auto result = xenon::features::SearchEngine::findNext(
         editor->toPlainText().toStdString(),
         pattern.toStdString(),
-        editor->textCursor().position(),
+        static_cast<size_t>(editor->textCursor().position()),
         find_replace_widget_->isCaseSensitive(),
         find_replace_widget_->isRegex()
     );
@@ -240,7 +240,7 @@ void MainWindow::onFindPrevious() {
     auto result = xenon::features::SearchEngine::findPrevious(
         editor->toPlainText().toStdString(),
         pattern.toStdString(),
-        editor->textCursor().selectionStart(),
+        static_cast<size_t>(editor->textCursor().selectionStart()),
         find_replace_widget_->isCaseSensitive(),
         find_replace_widget_->isRegex()
     );
@@ -499,7 +499,8 @@ void MainWindow::onCompletionReceived(int id, const QList<xenon::lsp::Completion
     if (!editor) return;
 
     // Show completion widget at cursor position
-    QPoint pos = editor->mapToGlobal(editor->cursorRect().bottomRight());
+    // Use viewport to map coordinates correctly
+    QPoint pos = editor->viewport()->mapToGlobal(editor->cursorRect().bottomRight());
     completion_widget_->showCompletions(pos, items);
 }
 
@@ -508,10 +509,24 @@ void MainWindow::onCompletionSelected(const QString& text) {
     if (!editor) return;
 
     QTextCursor cursor = editor->textCursor();
-    // Simple implementation: just insert the text
-    // A better one would replace the current word
-    cursor.insertText(text);
+    cursor.beginEditBlock();
+    
+    // Replace the current word part already typed
+    cursor.select(QTextCursor::WordUnderCursor);
+    QString word = cursor.selectedText();
+    
+    // If the completion text starts with the word already typed, replace it
+    if (text.startsWith(word, Qt::CaseInsensitive)) {
+        cursor.insertText(text);
+    } else {
+        // Just insert if it doesn't match prefix logic (simple fallback)
+        cursor.movePosition(QTextCursor::EndOfWord);
+        cursor.insertText(text);
+    }
+    
+    cursor.endEditBlock();
     editor->setTextCursor(cursor);
+    editor->setFocus();
 }
 
 void MainWindow::onDefinitionReceived(int id, const QString& uri, int line, int col) {
