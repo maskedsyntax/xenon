@@ -534,7 +534,7 @@ void MainWindow::setupMenus() {
     auto* file_menu = menuBar()->addMenu("&File");
     file_menu->addAction("&New File", QKeySequence::New, this, &MainWindow::onFileNew);
     file_menu->addAction("&Open File...", QKeySequence::Open, this, &MainWindow::onFileOpenDialog);
-    file_menu->addAction("Open Folder...", QKeySequence("Ctrl+O"), this, &MainWindow::onFileOpenFolderDialog);
+    file_menu->addAction("Open Folder...", QKeySequence("Ctrl+Alt+O"), this, &MainWindow::onFileOpenFolderDialog);
     file_menu->addAction("Quick Open", QKeySequence("Ctrl+P"), this, &MainWindow::onQuickOpen);
     file_menu->addSeparator();
     file_menu->addAction("&Save", QKeySequence::Save, this, &MainWindow::onFileSave);
@@ -557,10 +557,21 @@ void MainWindow::setupMenus() {
             lsp_client_->definition(QUrl::fromLocalFile(path).toString(), cursor.blockNumber(), cursor.columnNumber());
         }
     });
+#ifdef Q_OS_MAC
+    edit_menu->addAction("Show Completions", QKeySequence(Qt::MetaModifier | Qt::Key_Space), this, &MainWindow::onCompletionRequested);
+#else
     edit_menu->addAction("Show Completions", QKeySequence("Ctrl+Space"), this, &MainWindow::onCompletionRequested);
+#endif
 
     auto* view_menu = menuBar()->addMenu("&View");
     view_menu->addAction("Command Palette", QKeySequence("Ctrl+Shift+P"), this, &MainWindow::onCommandPalette);
+    view_menu->addSeparator();
+    view_menu->addAction("Toggle Sidebar", QKeySequence("Ctrl+B"), [this]() {
+        sidebar_stack_->setVisible(!sidebar_stack_->isVisible());
+    });
+    view_menu->addAction("Toggle Terminal", QKeySequence("Ctrl+`"), [this]() {
+        terminal_widget_->setVisible(!terminal_widget_->isVisible());
+    });
 }
 
 } // namespace xenon::ui
