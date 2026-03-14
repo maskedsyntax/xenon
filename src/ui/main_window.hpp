@@ -35,6 +35,7 @@ protected:
 private slots:
     void onFileNew();
     void onFileOpenDialog();
+    void onFileOpenFolderDialog();
     void onFileSave();
     void onFileSaveAs();
     void onEditUndo();

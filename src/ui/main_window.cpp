@@ -305,6 +305,23 @@ void MainWindow::onFileOpenDialog() {
     }
 }
 
+void MainWindow::onFileOpenFolderDialog() {
+    QString dirName = QFileDialog::getExistingDirectory(this, "Open Project", QDir::currentPath());
+    if (!dirName.isEmpty()) {
+        file_explorer_->setRootPath(dirName);
+        git_manager_->setWorkingDirectory(dirName);
+        
+        // Restart LSP for new root
+        if (lsp_client_->isRunning()) {
+            lsp_client_->stop();
+        }
+        lsp_client_->start({"clangd"}, dirName);
+        
+        QDir::setCurrent(dirName);
+        statusBar()->showMessage("Opened Project: " + dirName, 3000);
+    }
+}
+
 void MainWindow::onFileSave() {
     auto* editor = qobject_cast<CodeEditor*>(editor_tabs_->currentWidget());
     if (!editor) return;
@@ -516,7 +533,8 @@ void MainWindow::onDefinitionReceived(int id, const QString& uri, int line, int 
 void MainWindow::setupMenus() {
     auto* file_menu = menuBar()->addMenu("&File");
     file_menu->addAction("&New File", QKeySequence::New, this, &MainWindow::onFileNew);
-    file_menu->addAction("&Open...", QKeySequence::Open, this, &MainWindow::onFileOpenDialog);
+    file_menu->addAction("&Open File...", QKeySequence::Open, this, &MainWindow::onFileOpenDialog);
+    file_menu->addAction("Open Folder...", QKeySequence("Ctrl+O"), this, &MainWindow::onFileOpenFolderDialog);
     file_menu->addAction("Quick Open", QKeySequence("Ctrl+P"), this, &MainWindow::onQuickOpen);
     file_menu->addSeparator();
     file_menu->addAction("&Save", QKeySequence::Save, this, &MainWindow::onFileSave);
