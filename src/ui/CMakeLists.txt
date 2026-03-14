@@ -6,6 +6,7 @@ add_library(xenon_ui STATIC
     syntax_highlighter.cpp
     command_palette.cpp
     style_manager.cpp
+    find_replace_widget.cpp
 )
 
 target_link_libraries(xenon_ui 

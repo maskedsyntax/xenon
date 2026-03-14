@@ -10,6 +10,10 @@
 #include <QFileInfo>
 #include <QDir>
 
+#include <QMessageBox>
+
+#include "features/search_engine.hpp"
+
 namespace xenon::ui {
 
 MainWindow::MainWindow(QWidget* parent)
@@ -63,7 +67,24 @@ void MainWindow::setupUI() {
     content_splitter_ = new QSplitter(Qt::Vertical, this);
     content_splitter_->setHandleWidth(1);
     content_splitter_->setStyleSheet("QSplitter::handle { background-color: #3c3c3c; }");
-    content_splitter_->addWidget(editor_tabs_);
+
+    auto* editor_container = new QWidget(this);
+    auto* editor_layout = new QVBoxLayout(editor_container);
+    editor_layout->setContentsMargins(0, 0, 0, 0);
+    editor_layout->setSpacing(0);
+
+    find_replace_widget_ = new FindReplaceWidget(this);
+    find_replace_widget_->hide();
+    connect(find_replace_widget_, &FindReplaceWidget::findNext, this, &MainWindow::onFindNext);
+    connect(find_replace_widget_, &FindReplaceWidget::findPrevious, this, &MainWindow::onFindPrevious);
+    connect(find_replace_widget_, &FindReplaceWidget::replace, this, &MainWindow::onReplace);
+    connect(find_replace_widget_, &FindReplaceWidget::replaceAll, this, &MainWindow::onReplaceAll);
+    connect(find_replace_widget_, &FindReplaceWidget::closeRequested, find_replace_widget_, &FindReplaceWidget::hide);
+
+    editor_layout->addWidget(find_replace_widget_);
+    editor_layout->addWidget(editor_tabs_);
+
+    content_splitter_->addWidget(editor_container);
     content_splitter_->addWidget(terminal_widget_);
     content_splitter_->setStretchFactor(0, 1);
     content_splitter_->setStretchFactor(1, 0);
@@ -150,6 +171,116 @@ void MainWindow::setupSidebar() {
     sidebar_stack_->addWidget(search_placeholder);
 }
 
+void MainWindow::onEditFind() {
+    find_replace_widget_->showFind();
+}
+
+void MainWindow::onEditReplace() {
+    find_replace_widget_->showReplace();
+}
+
+void MainWindow::onFindNext() {
+    auto* editor = qobject_cast<CodeEditor*>(editor_tabs_->currentWidget());
+    if (!editor) return;
+
+    QString pattern = find_replace_widget_->findText();
+    if (pattern.isEmpty()) return;
+
+    auto result = xenon::features::SearchEngine::findNext(
+        editor->toPlainText().toStdString(),
+        pattern.toStdString(),
+        editor->textCursor().position(),
+        find_replace_widget_->isCaseSensitive(),
+        find_replace_widget_->isRegex()
+    );
+
+    if (result.offset != std::string::npos) {
+        QTextCursor cursor = editor->textCursor();
+        cursor.setPosition(static_cast<int>(result.offset));
+        cursor.movePosition(QTextCursor::Right, QTextCursor::KeepAnchor, static_cast<int>(result.length));
+        editor->setTextCursor(cursor);
+    } else {
+        // Wrap around
+        result = xenon::features::SearchEngine::findNext(
+            editor->toPlainText().toStdString(),
+            pattern.toStdString(),
+            0,
+            find_replace_widget_->isCaseSensitive(),
+            find_replace_widget_->isRegex()
+        );
+        if (result.offset != std::string::npos) {
+            QTextCursor cursor = editor->textCursor();
+            cursor.setPosition(static_cast<int>(result.offset));
+            cursor.movePosition(QTextCursor::Right, QTextCursor::KeepAnchor, static_cast<int>(result.length));
+            editor->setTextCursor(cursor);
+        }
+    }
+}
+
+void MainWindow::onFindPrevious() {
+    auto* editor = qobject_cast<CodeEditor*>(editor_tabs_->currentWidget());
+    if (!editor) return;
+
+    QString pattern = find_replace_widget_->findText();
+    if (pattern.isEmpty()) return;
+
+    auto result = xenon::features::SearchEngine::findPrevious(
+        editor->toPlainText().toStdString(),
+        pattern.toStdString(),
+        editor->textCursor().selectionStart(),
+        find_replace_widget_->isCaseSensitive(),
+        find_replace_widget_->isRegex()
+    );
+
+    if (result.offset != std::string::npos) {
+        QTextCursor cursor = editor->textCursor();
+        cursor.setPosition(static_cast<int>(result.offset));
+        cursor.movePosition(QTextCursor::Right, QTextCursor::KeepAnchor, static_cast<int>(result.length));
+        editor->setTextCursor(cursor);
+    }
+}
+
+void MainWindow::onReplace() {
+    auto* editor = qobject_cast<CodeEditor*>(editor_tabs_->currentWidget());
+    if (!editor) return;
+
+    if (editor->textCursor().hasSelection()) {
+        editor->textCursor().insertText(find_replace_widget_->replaceText());
+        onFindNext();
+    } else {
+        onFindNext();
+    }
+}
+
+void MainWindow::onReplaceAll() {
+    auto* editor = qobject_cast<CodeEditor*>(editor_tabs_->currentWidget());
+    if (!editor) return;
+
+    QString pattern = find_replace_widget_->findText();
+    if (pattern.isEmpty()) return;
+
+    auto results = xenon::features::SearchEngine::findAll(
+        editor->toPlainText().toStdString(),
+        pattern.toStdString(),
+        find_replace_widget_->isCaseSensitive(),
+        find_replace_widget_->isRegex()
+    );
+
+    if (results.empty()) return;
+
+    QTextCursor cursor = editor->textCursor();
+    cursor.beginEditBlock();
+    
+    // Replace from end to start to maintain offsets
+    for (auto it = results.rbegin(); it != results.rend(); ++it) {
+        cursor.setPosition(static_cast<int>(it->offset));
+        cursor.movePosition(QTextCursor::Right, QTextCursor::KeepAnchor, static_cast<int>(it->length));
+        cursor.insertText(find_replace_widget_->replaceText());
+    }
+    
+    cursor.endEditBlock();
+}
+
 void MainWindow::onFileNew() {
     createNewEditor("Untitled", "");
 }
@@ -175,6 +306,7 @@ void MainWindow::onFileSave() {
     if (file.open(QFile::WriteOnly | QFile::Text)) {
         QTextStream out(&file);
         out << editor->toPlainText();
+        editor->document()->setModified(false);
         statusBar()->showMessage("Saved: " + path, 3000);
     }
 }
@@ -194,6 +326,7 @@ void MainWindow::onFileSaveAs() {
             int index = editor_tabs_->currentIndex();
             editor_tabs_->setTabText(index, fi.fileName());
             editor_tabs_->setTabToolTip(index, fileName);
+            editor->document()->setModified(false);
             statusBar()->showMessage("Saved: " + fileName, 3000);
         }
     }
@@ -231,17 +364,56 @@ void MainWindow::onFileOpen(const QString& path) {
 void MainWindow::createNewEditor(const QString& path, const QString& content) {
     auto* editor = new CodeEditor(this);
     editor->setPlainText(content);
+    editor->document()->setModified(false);
     
     QFileInfo fi(path);
     int index = editor_tabs_->addTab(editor, fi.fileName());
     editor_tabs_->setTabToolTip(index, path);
     editor_tabs_->setCurrentIndex(index);
+
+    connect(editor->document(), &QTextDocument::modificationChanged, [this, editor](bool changed) {
+        int idx = editor_tabs_->indexOf(editor);
+        if (idx == -1) return;
+
+        QString title = QFileInfo(editor_tabs_->tabToolTip(idx)).fileName();
+        if (changed) {
+            editor_tabs_->setTabText(idx, title + " ●");
+        } else {
+            editor_tabs_->setTabText(idx, title);
+        }
+    });
 }
 
 void MainWindow::onEditorTabClosed(int index) {
+    auto* editor = qobject_cast<CodeEditor*>(editor_tabs_->widget(index));
+    if (editor && editor->document()->isModified()) {
+        auto result = QMessageBox::warning(this, "Unsaved Changes",
+            QString("The document '%1' has unsaved changes. Do you want to save them?").arg(editor_tabs_->tabText(index).remove(" ●")),
+            QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
+
+        if (result == QMessageBox::Save) {
+            editor_tabs_->setCurrentIndex(index);
+            onFileSave();
+        } else if (result == QMessageBox::Cancel) {
+            return;
+        }
+    }
+
     auto* widget = editor_tabs_->widget(index);
     editor_tabs_->removeTab(index);
     delete widget;
+}
+
+void MainWindow::closeEvent(QCloseEvent* event) {
+    while (editor_tabs_->count() > 0) {
+        int initial_count = editor_tabs_->count();
+        onEditorTabClosed(0);
+        if (editor_tabs_->count() == initial_count) {
+            event->ignore();
+            return;
+        }
+    }
+    event->accept();
 }
 
 void MainWindow::onCommandPalette() {
@@ -261,6 +433,9 @@ void MainWindow::setupMenus() {
     auto* edit_menu = menuBar()->addMenu("&Edit");
     edit_menu->addAction("&Undo", QKeySequence::Undo, this, &MainWindow::onEditUndo);
     edit_menu->addAction("&Redo", QKeySequence::Redo, this, &MainWindow::onEditRedo);
+    edit_menu->addSeparator();
+    edit_menu->addAction("&Find", QKeySequence::Find, this, &MainWindow::onEditFind);
+    edit_menu->addAction("&Replace", QKeySequence::Replace, this, &MainWindow::onEditReplace);
 
     auto* view_menu = menuBar()->addMenu("&View");
     view_menu->addAction("Command Palette", QKeySequence("Ctrl+Shift+P"), this, &MainWindow::onCommandPalette);
